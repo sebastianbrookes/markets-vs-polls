@@ -12,7 +12,7 @@ Compares **Polymarket** (prediction market) and **FiveThirtyEight** (poll aggreg
 python -m src.analysis.accuracy.accuracy
 ```
 
-Full output is saved in [`result.txt`](result.txt).
+Raw output is saved in [`result.txt`](result.txt).
 
 #### Input Data
 
