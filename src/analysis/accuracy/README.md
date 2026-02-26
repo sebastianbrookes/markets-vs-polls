@@ -1,6 +1,6 @@
-# src/analysis/
+# src/analysis/accuracy/
 
-Analysis scripts that compare prediction-market odds and traditional poll averages against official election results.
+Prediction accuracy comparison between Polymarket and FiveThirtyEight against FEC ground truth.
 
 ## Scripts
 
@@ -9,8 +9,10 @@ Analysis scripts that compare prediction-market odds and traditional poll averag
 Compares **Polymarket** (prediction market) and **FiveThirtyEight** (poll aggregator) against **FEC ground truth** for the 2024 U.S. presidential election.
 
 ```
-python -m src.analysis.accuracy
+python -m src.analysis.accuracy.accuracy
 ```
+
+Full output is saved in [`result.txt`](result.txt).
 
 #### Input Data
 
@@ -40,6 +42,11 @@ Results are compared against `fec_results.winner` and reported as correct/total 
 - Swing-state-only subset (7 states in overlap)
 - Polymarket standalone at Oct 6 (30 days out, 50 states)
 - Polymarket standalone at Nov 4 (election eve, 50 states)
+
+**Key findings from Section 1:**
+
+- **MI and WI were uniquely stubborn.** They appear as misses in every single snapshot: both sources on Sept 12, Polymarket at 30 days out, and Polymarket on election eve. No other states were missed that consistently. These were the two narrowest Trump swing-state wins — both sources sat right at the decision boundary and fell on the wrong side.
+- **The market largely settled by 30 days out.** Polymarket went from 47/50 on Oct 6 to 48/50 on Nov 4, picking up just one additional state in the final month. The two it couldn't crack (MI, WI) stayed wrong through election eve. This suggests the market had priced in most available information by early October, and the remaining uncertainty was concentrated in the tightest races.
 
 **2. Electoral Vote Predictions**
 
@@ -99,25 +106,3 @@ This is a classic finding in prediction-market research: markets are noisier ear
 
 - `pandas`, `numpy` (listed in `requirements.txt`)
 - `src.clean.utils` — imports `PROCESSED_DIR` and `SWING_STATES`
-
-#### Sample Output
-
-```
-1. WINNER PREDICTION ACCURACY
-   Head-to-head on 2024-09-12 (13 states):
-     Polymarket: 11/13 correct (84.6%)
-     538:         8/13 correct (61.5%)
-
-2. ELECTORAL VOTE PREDICTIONS
-   Head-to-head (13 states):
-     Polymarket: Trump 155 — Harris 93
-     538:        Trump 114 — Harris 134
-   Polymarket standalone (Nov 4, all states):
-     Polymarket: Trump 287 — Harris 248
-
-3. TIME-SERIES ACCURACY
-   Overall: PM 74.9% | 538 90.2%
-   Mar–May: PM 63.6% | 538 99.4%
-   Jun–Jul: PM 87.7% | 538 97.3%
-   Aug–Sep: PM 79.2% | 538 62.2%
-```

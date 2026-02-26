@@ -8,7 +8,7 @@ Sections:
     3. Time-series accuracy (daily, March–Sept 12)
 
 Run from project root:
-    python -m src.analysis.accuracy
+    python -m src.analysis.accuracy.accuracy
 """
 
 import sys
@@ -17,8 +17,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Allow running as `python -m src.analysis.accuracy` from project root
-_project_root = str(Path(__file__).resolve().parents[2])
+# Allow running as `python -m src.analysis.accuracy.accuracy` from project root
+_project_root = str(Path(__file__).resolve().parents[3])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
