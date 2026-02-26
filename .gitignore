@@ -1,2 +1,18 @@
 CLAUDE.md
 /prelim-info/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+
+# Large raw data (download instructions in README)
+# Uncomment these if your raw files are too large for Git:
+# data/raw/**/*.csv
+# data/raw/**/*.xlsx
