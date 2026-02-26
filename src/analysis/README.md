@@ -1,0 +1,133 @@
+# src/analysis/
+
+Analysis scripts that compare prediction-market odds and traditional poll averages against official election results.
+
+## Scripts
+
+### `accuracy.py`
+
+Compares **Polymarket** (prediction market) and **FiveThirtyEight** (poll aggregator) against **FEC ground truth** for the 2024 U.S. presidential election.
+
+```
+python -m src.analysis.accuracy
+```
+
+#### Input Data
+
+All files are read from `data/processed/`:
+
+| File | Source | Description |
+|---|---|---|
+| `polymarket_daily.csv` | Polymarket | Daily win-probability per state (Mar 8 – Nov 4, all 50 states) |
+| `polls_538.csv` | FiveThirtyEight | Daily poll-average vote-share per state (Mar 1 – Sept 12, 15 states) |
+| `fec_results.csv` | FEC | Official 2024 results: vote counts, margins, winner, electoral votes per state |
+
+#### Key Constraints
+
+- **538 data ends September 12, 2024.** All head-to-head comparisons use that date as the cutoff.
+- **13 overlap states** have data in both sources on Sept 12: AZ, CA, FL, GA, MI, MN, NC, NH, NV, OH, PA, TX, WI. This is the fair comparison set.
+- **Polymarket has ~50 duplicate rows** (two entries per state on certain dates). The script deduplicates by keeping the last `timestamp_utc` per (state, date).
+- **Margin units differ.** Polymarket's `trump_lead` is a probability gap (e.g., 0.80 means 80% Trump vs 20% Harris), while 538's `trump_lead` is a vote-share margin in percentage points. The MAE section flags this caveat.
+
+#### Analysis Sections
+
+**1. Winner Prediction Accuracy**
+
+For each source, the predicted winner per state is determined by a simple threshold:
+- Polymarket: `trump_prob > 0.5` → Trump, else Harris
+- 538: `trump_pct > dem_pct` → Trump, else Harris
+
+Results are compared against `fec_results.winner` and reported as correct/total with individual misses listed. Snapshots:
+- Sept 12 head-to-head (13 states, both sources)
+- Swing-state-only subset (7 states in overlap)
+- Polymarket standalone at Oct 6 (30 days out, 50 states)
+- Polymarket standalone at Nov 4 (election eve, 50 states)
+
+**2. Margin Accuracy (MAE)**
+
+Mean absolute error between each source's predicted margin and the FEC actual margin (`margin * 100` to convert to percentage points). Broken down by:
+- All 13 overlap states
+- Swing states only (7)
+- Non-swing states only (6)
+
+Includes a prominent caveat that Polymarket's probability-gap margin and 538's vote-share margin are not directly comparable units.
+
+**3. Electoral Vote Predictions**
+
+Maps each source's predicted state winners to FEC `electoral_votes` and sums Trump vs Harris EV totals. Reported for:
+- Sept 12 head-to-head (13 states, 248 EV in sample)
+- Polymarket Nov 4 standalone (all 50 states, 535 EV)
+
+Compared against the actual result: Trump 312 – Harris 226.
+
+**4. Time-Series Accuracy (March – Sept 12)**
+
+A daily loop over the full overlap period. For each date:
+- Polymarket uses the day's row per state
+- 538 uses forward-fill (latest available row per state on or before that date)
+- Winner predictions are made for the common states and checked against FEC
+
+Reports:
+- Mean and median daily accuracy for each source
+- Period breakdown: Mar–May, Jun–Jul, Aug–Sep 12
+
+#### Functions
+
+| Function | Visibility | Purpose |
+|---|---|---|
+| `load_data()` | Public | Load 3 CSVs, parse dates, drop 538 national rows |
+| `dedup_polymarket(pm)` | Public | Keep last timestamp per (state, date) |
+| `_latest_per_state(p538, as_of)` | Private | Forward-fill: latest 538 row per state ≤ date |
+| `_predict_winner_pm(df)` | Private | Add `predicted_winner` from Polymarket probabilities |
+| `_predict_winner_538(df)` | Private | Add `predicted_winner` from 538 vote-share |
+| `_winner_accuracy(snapshot, fec, label, states)` | Private | Count and print correct winner calls |
+| `_margin_mae(pm_snap, p538_snap, fec, states, label)` | Private | Compute and print MAE for both sources |
+| `_ev_prediction(snapshot, fec, label)` | Private | Sum and print electoral votes by predicted winner |
+| `_section_winner(pm, p538, fec)` | Private | Orchestrate Section 1 output |
+| `_section_margin(pm, p538, fec)` | Private | Orchestrate Section 2 output |
+| `_section_ev(pm, p538, fec)` | Private | Orchestrate Section 3 output |
+| `_section_timeseries(pm, p538, fec)` | Private | Orchestrate Section 4 output |
+| `main()` | Public | Entry point — load data, run all sections |
+
+#### Constants
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `OVERLAP_CUTOFF` | `2024-09-12` | Last date with 538 data |
+| `ELECTION_DATE` | `2024-11-05` | Election day |
+| `THIRTY_DAYS_OUT` | `2024-10-06` | 30 days before election |
+| `OVERLAP_STATES` | 13 states | States present in both sources on Sept 12 |
+| `SWING_OVERLAP` | 7 states | Swing states within the overlap set |
+| `NON_SWING_OVERLAP` | 6 states | Non-swing states within the overlap set |
+
+#### Dependencies
+
+- `pandas`, `numpy` (listed in `requirements.txt`)
+- `src.clean.utils` — imports `PROCESSED_DIR` and `SWING_STATES`
+
+#### Sample Output
+
+```
+1. WINNER PREDICTION ACCURACY
+   Head-to-head on 2024-09-12 (13 states):
+     Polymarket: 11/13 correct (84.6%)
+     538:         8/13 correct (61.5%)
+
+2. MARGIN ACCURACY (MAE)
+   All 13 overlap states:
+     Polymarket MAE: 37.10 pp  (probability gap)
+     538 MAE:         4.04 pp  (vote-share margin)
+
+3. ELECTORAL VOTE PREDICTIONS
+   Head-to-head (13 states):
+     Polymarket: Trump 155 — Harris 93
+     538:        Trump 114 — Harris 134
+   Polymarket standalone (Nov 4, all states):
+     Polymarket: Trump 287 — Harris 248
+
+4. TIME-SERIES ACCURACY
+   Overall: PM 74.9% | 538 90.2%
+   Mar–May: PM 63.6% | 538 99.4%
+   Jun–Jul: PM 87.7% | 538 97.3%
+   Aug–Sep: PM 79.2% | 538 62.2%
+```
