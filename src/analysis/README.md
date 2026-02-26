@@ -27,8 +27,6 @@ All files are read from `data/processed/`:
 - **538 data ends September 12, 2024.** All head-to-head comparisons use that date as the cutoff.
 - **13 overlap states** have data in both sources on Sept 12: AZ, CA, FL, GA, MI, MN, NC, NH, NV, OH, PA, TX, WI. This is the fair comparison set.
 - **Polymarket duplicates** are handled upstream in `src/clean/clean_polymarket.py` (keeps the latest `timestamp_utc` per state per date). The processed CSV is already clean.
-- **Margin units differ.** Polymarket's `trump_lead` is a probability gap (e.g., 0.80 means 80% Trump vs 20% Harris), while 538's `trump_lead` is a vote-share margin in percentage points. The MAE section flags this caveat.
-
 #### Analysis Sections
 
 **1. Winner Prediction Accuracy**
@@ -43,16 +41,7 @@ Results are compared against `fec_results.winner` and reported as correct/total 
 - Polymarket standalone at Oct 6 (30 days out, 50 states)
 - Polymarket standalone at Nov 4 (election eve, 50 states)
 
-**2. Margin Accuracy (MAE)**
-
-Mean absolute error between each source's predicted margin and the FEC actual margin (`margin * 100` to convert to percentage points). Broken down by:
-- All 13 overlap states
-- Swing states only (7)
-- Non-swing states only (6)
-
-Includes a prominent caveat that Polymarket's probability-gap margin and 538's vote-share margin are not directly comparable units.
-
-**3. Electoral Vote Predictions**
+**2. Electoral Vote Predictions**
 
 Maps each source's predicted state winners to FEC `electoral_votes` and sums Trump vs Harris EV totals. Reported for:
 - Sept 12 head-to-head (13 states, 248 EV in sample)
@@ -60,7 +49,7 @@ Maps each source's predicted state winners to FEC `electoral_votes` and sums Tru
 
 Compared against the actual result: Trump 312 – Harris 226.
 
-**4. Time-Series Accuracy (March – Sept 12)**
+**3. Time-Series Accuracy (March – Sept 12)**
 
 A daily loop over the full overlap period. For each date:
 - Polymarket uses the day's row per state
@@ -80,12 +69,10 @@ Reports:
 | `_predict_winner_pm(df)` | Private | Add `predicted_winner` from Polymarket probabilities |
 | `_predict_winner_538(df)` | Private | Add `predicted_winner` from 538 vote-share |
 | `_winner_accuracy(snapshot, fec, label, states)` | Private | Count and print correct winner calls |
-| `_margin_mae(pm_snap, p538_snap, fec, states, label)` | Private | Compute and print MAE for both sources |
 | `_ev_prediction(snapshot, fec, label)` | Private | Sum and print electoral votes by predicted winner |
 | `_section_winner(pm, p538, fec)` | Private | Orchestrate Section 1 output |
-| `_section_margin(pm, p538, fec)` | Private | Orchestrate Section 2 output |
-| `_section_ev(pm, p538, fec)` | Private | Orchestrate Section 3 output |
-| `_section_timeseries(pm, p538, fec)` | Private | Orchestrate Section 4 output |
+| `_section_ev(pm, p538, fec)` | Private | Orchestrate Section 2 output |
+| `_section_timeseries(pm, p538, fec)` | Private | Orchestrate Section 3 output |
 | `main()` | Public | Entry point — load data, run all sections |
 
 #### Constants
@@ -97,7 +84,6 @@ Reports:
 | `THIRTY_DAYS_OUT` | `2024-10-06` | 30 days before election |
 | `OVERLAP_STATES` | 13 states | States present in both sources on Sept 12 |
 | `SWING_OVERLAP` | 7 states | Swing states within the overlap set |
-| `NON_SWING_OVERLAP` | 6 states | Non-swing states within the overlap set |
 
 #### Dependencies
 
@@ -112,19 +98,14 @@ Reports:
      Polymarket: 11/13 correct (84.6%)
      538:         8/13 correct (61.5%)
 
-2. MARGIN ACCURACY (MAE)
-   All 13 overlap states:
-     Polymarket MAE: 37.10 pp  (probability gap)
-     538 MAE:         4.04 pp  (vote-share margin)
-
-3. ELECTORAL VOTE PREDICTIONS
+2. ELECTORAL VOTE PREDICTIONS
    Head-to-head (13 states):
      Polymarket: Trump 155 — Harris 93
      538:        Trump 114 — Harris 134
    Polymarket standalone (Nov 4, all states):
      Polymarket: Trump 287 — Harris 248
 
-4. TIME-SERIES ACCURACY
+3. TIME-SERIES ACCURACY
    Overall: PM 74.9% | 538 90.2%
    Mar–May: PM 63.6% | 538 99.4%
    Jun–Jul: PM 87.7% | 538 97.3%
