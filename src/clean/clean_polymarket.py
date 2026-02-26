@@ -89,6 +89,16 @@ def _clean_granularity(subdir, label):
     combined = combined.sort_values(["state", "date_utc"])
     combined = combined.drop_duplicates(subset=["state", "date_utc"])
 
+    # For daily granularity, multiple timestamps can map to the same date.
+    # Keep the latest snapshot per (state, date).
+    if label == "daily":
+        before = len(combined)
+        combined = combined.sort_values(["state", "date", "timestamp_utc"])
+        combined = combined.drop_duplicates(subset=["state", "date"], keep="last")
+        dropped = before - len(combined)
+        if dropped:
+            print(f"  Dropped {dropped} same-date duplicate rows (kept latest)")
+
     # Final column order
     combined = combined[[
         "date", "date_utc", "timestamp_utc", "state", "state_name",

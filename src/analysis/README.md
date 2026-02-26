@@ -26,7 +26,7 @@ All files are read from `data/processed/`:
 
 - **538 data ends September 12, 2024.** All head-to-head comparisons use that date as the cutoff.
 - **13 overlap states** have data in both sources on Sept 12: AZ, CA, FL, GA, MI, MN, NC, NH, NV, OH, PA, TX, WI. This is the fair comparison set.
-- **Polymarket has ~50 duplicate rows** (two entries per state on certain dates). The script deduplicates by keeping the last `timestamp_utc` per (state, date).
+- **Polymarket duplicates** are handled upstream in `src/clean/clean_polymarket.py` (keeps the latest `timestamp_utc` per state per date). The processed CSV is already clean.
 - **Margin units differ.** Polymarket's `trump_lead` is a probability gap (e.g., 0.80 means 80% Trump vs 20% Harris), while 538's `trump_lead` is a vote-share margin in percentage points. The MAE section flags this caveat.
 
 #### Analysis Sections
@@ -76,7 +76,6 @@ Reports:
 | Function | Visibility | Purpose |
 |---|---|---|
 | `load_data()` | Public | Load 3 CSVs, parse dates, drop 538 national rows |
-| `dedup_polymarket(pm)` | Public | Keep last timestamp per (state, date) |
 | `_latest_per_state(p538, as_of)` | Private | Forward-fill: latest 538 row per state ≤ date |
 | `_predict_winner_pm(df)` | Private | Add `predicted_winner` from Polymarket probabilities |
 | `_predict_winner_538(df)` | Private | Add `predicted_winner` from 538 vote-share |

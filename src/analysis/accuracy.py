@@ -60,12 +60,6 @@ def load_data():
     return pm, p538, fec
 
 
-def dedup_polymarket(pm):
-    """Keep only the last timestamp per (state, date) to remove ~50 dupes."""
-    pm = pm.sort_values(["state", "date", "timestamp_utc"])
-    return pm.drop_duplicates(subset=["state", "date"], keep="last")
-
-
 def _latest_per_state(p538, as_of):
     """Forward-fill 538: latest row per state on or before *as_of*."""
     mask = p538["date"] <= pd.Timestamp(as_of)
@@ -355,7 +349,6 @@ def main():
     print("=" * 60 + "\n")
 
     pm, p538, fec = load_data()
-    pm = dedup_polymarket(pm)
 
     _section_winner(pm, p538, fec)
     _section_margin(pm, p538, fec)
