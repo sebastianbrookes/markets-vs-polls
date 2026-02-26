@@ -60,6 +60,16 @@ Reports:
 - Mean and median daily accuracy for each source
 - Period breakdown: Mar–May, Jun–Jul, Aug–Sep 12
 
+**Key finding — the crossover pattern:**
+
+Polymarket's lower overall time-series accuracy (74.9% vs 538's 90.2%) is heavily driven by early-period noise. The period breakdown tells a more nuanced story:
+
+- **Mar–May:** 538 was nearly perfect (99.4%) while Polymarket sat at 63.6%. Prediction markets need trading volume and information to settle; 538's polling model was stable and largely reflecting incumbency/fundamentals.
+- **Jun–Jul:** Polymarket climbed to 87.7% as liquidity and attention grew.
+- **Aug–Sep 12:** The relationship flipped — Polymarket (79.2%) outperformed 538 (62.2%). This was the period after Biden dropped out and Harris entered the race, which scrambled polling averages. Polymarket adapted faster because traders incorporate new information instantly, while polling models need new polls to trickle in.
+
+This is a classic finding in prediction-market research: markets are noisier early on when there is less signal to trade on, but outperform polling models at incorporating late-breaking information. The crossover happens precisely when a major shock (candidate swap) hit the race — the exact scenario where markets' speed advantage matters most.
+
 #### Functions
 
 | Function | Visibility | Purpose |
