@@ -4,12 +4,11 @@ ground truth for the 2024 U.S. presidential election.
 
 Sections:
     1. Winner prediction accuracy (head-to-head + Polymarket standalone)
-    2. Margin accuracy (MAE)
-    3. Electoral vote predictions
-    4. Time-series accuracy (daily, March–Sept 12)
+    2. Electoral vote predictions
+    3. Time-series accuracy (daily, March–Sept 12)
 
 Run from project root:
-    python -m src.analysis.accuracy
+    python -m src.analysis.accuracy.accuracy
 """
 
 import sys
@@ -18,8 +17,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Allow running as `python -m src.analysis.accuracy` from project root
-_project_root = str(Path(__file__).resolve().parents[2])
+# Allow running as `python -m src.analysis.accuracy.accuracy` from project root
+_project_root = str(Path(__file__).resolve().parents[3])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
@@ -39,7 +38,6 @@ OVERLAP_STATES = [
 ]
 
 SWING_OVERLAP = sorted(set(OVERLAP_STATES) & set(SWING_STATES))  # 7
-NON_SWING_OVERLAP = sorted(set(OVERLAP_STATES) - set(SWING_STATES))  # 6
 
 
 # ---------------------------------------------------------------------------
@@ -152,57 +150,7 @@ def _section_winner(pm, p538, fec):
 
 
 # ---------------------------------------------------------------------------
-# Section 2: Margin Accuracy (MAE)
-# ---------------------------------------------------------------------------
-
-def _margin_mae(pm_snap, p538_snap, fec, states, label):
-    """Compute and print MAE of predicted vs actual margin."""
-    fec_sub = fec[fec["state"].isin(states)].copy()
-    fec_sub["actual_margin_pp"] = fec_sub["margin"] * 100  # to percentage pts
-
-    # Polymarket margin: trump_lead is probability gap, scale to pp
-    pm_m = pm_snap[pm_snap["state"].isin(states)].merge(
-        fec_sub[["state", "actual_margin_pp"]], on="state"
-    )
-    pm_mae = (pm_m["trump_lead"] * 100 - pm_m["actual_margin_pp"]).abs().mean()
-
-    # 538 margin: trump_lead is already in vote-share pp
-    p5_m = p538_snap[p538_snap["state"].isin(states)].merge(
-        fec_sub[["state", "actual_margin_pp"]], on="state"
-    )
-    p5_mae = (p5_m["trump_lead"] - p5_m["actual_margin_pp"]).abs().mean()
-
-    print(f"  {label}:")
-    print(f"    Polymarket MAE: {pm_mae:.2f} pp  (probability gap — not directly "
-          f"comparable to vote-share)")
-    print(f"    538 MAE:        {p5_mae:.2f} pp  (vote-share margin)")
-
-
-def _section_margin(pm, p538, fec):
-    """MAE comparison on Sept 12 overlap states."""
-    print("=" * 60)
-    print("2. MARGIN ACCURACY (MAE) — as of Sept 12")
-    print("=" * 60)
-    print("  NOTE: Polymarket margin is a probability gap, 538 margin is")
-    print("  vote-share. These are NOT directly comparable units.\n")
-
-    pm_snap = pm[pm["date"] == pd.Timestamp(OVERLAP_CUTOFF)]
-    pm_snap = pm_snap[pm_snap["state"].isin(OVERLAP_STATES)]
-
-    p538_snap = _latest_per_state(p538, OVERLAP_CUTOFF)
-    p538_snap = p538_snap[p538_snap["state"].isin(OVERLAP_STATES)]
-
-    _margin_mae(pm_snap, p538_snap, fec, OVERLAP_STATES,
-                f"All 13 overlap states")
-    _margin_mae(pm_snap, p538_snap, fec, SWING_OVERLAP,
-                f"Swing states ({len(SWING_OVERLAP)})")
-    _margin_mae(pm_snap, p538_snap, fec, NON_SWING_OVERLAP,
-                f"Non-swing states ({len(NON_SWING_OVERLAP)})")
-    print()
-
-
-# ---------------------------------------------------------------------------
-# Section 3: Electoral Vote Predictions
+# Section 2: Electoral Vote Predictions
 # ---------------------------------------------------------------------------
 
 def _ev_prediction(snapshot, fec, label):
@@ -220,7 +168,7 @@ def _ev_prediction(snapshot, fec, label):
 def _section_ev(pm, p538, fec):
     """Electoral vote totals from each source's predictions."""
     print("=" * 60)
-    print("3. ELECTORAL VOTE PREDICTIONS")
+    print("2. ELECTORAL VOTE PREDICTIONS")
     print("=" * 60)
     print(f"  Actual 2024 result: Trump 312 — Harris 226\n")
 
@@ -247,13 +195,13 @@ def _section_ev(pm, p538, fec):
 
 
 # ---------------------------------------------------------------------------
-# Section 4: Time-Series Accuracy (daily, March–Sept 12)
+# Section 3: Time-Series Accuracy (daily, March–Sept 12)
 # ---------------------------------------------------------------------------
 
 def _section_timeseries(pm, p538, fec):
     """Daily winner-accuracy for both sources over their overlap period."""
     print("=" * 60)
-    print("4. TIME-SERIES ACCURACY (daily, March 2024 – Sept 12)")
+    print("3. TIME-SERIES ACCURACY (daily, March 2024 – Sept 12)")
     print("=" * 60)
 
     # Build date range: first date both sources have data → Sept 12
@@ -351,7 +299,6 @@ def main():
     pm, p538, fec = load_data()
 
     _section_winner(pm, p538, fec)
-    _section_margin(pm, p538, fec)
     _section_ev(pm, p538, fec)
     _section_timeseries(pm, p538, fec)
 

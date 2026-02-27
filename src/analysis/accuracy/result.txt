@@ -1,0 +1,79 @@
+============================================================
+  POLYMARKET vs. 538: PREDICTION ACCURACY ANALYSIS
+============================================================
+
+============================================================
+1. WINNER PREDICTION ACCURACY
+============================================================
+
+Head-to-head on 2024-09-12 (13 states):
+  Polymarket: 11/13 correct (84.6%)
+    MISS: MI — predicted Harris, actual Trump
+    MISS: WI — predicted Harris, actual Trump
+  538: 8/13 correct (61.5%)
+    MISS: MI — predicted Harris, actual Trump
+    MISS: NC — predicted Harris, actual Trump
+    MISS: NV — predicted Harris, actual Trump
+    MISS: PA — predicted Harris, actual Trump
+    MISS: WI — predicted Harris, actual Trump
+
+Swing states only (7 states):
+  Polymarket: 5/7 correct (71.4%)
+    MISS: MI — predicted Harris, actual Trump
+    MISS: WI — predicted Harris, actual Trump
+  538: 2/7 correct (28.6%)
+    MISS: MI — predicted Harris, actual Trump
+    MISS: NC — predicted Harris, actual Trump
+    MISS: NV — predicted Harris, actual Trump
+    MISS: PA — predicted Harris, actual Trump
+    MISS: WI — predicted Harris, actual Trump
+
+Polymarket standalone — Oct 6 (30 days out):
+  All states: 47/50 correct (94.0%)
+    MISS: MI — predicted Harris, actual Trump
+    MISS: NV — predicted Harris, actual Trump
+    MISS: WI — predicted Harris, actual Trump
+  Swing states: 4/7 correct (57.1%)
+    MISS: MI — predicted Harris, actual Trump
+    MISS: NV — predicted Harris, actual Trump
+    MISS: WI — predicted Harris, actual Trump
+
+Polymarket standalone — Nov 4 (election eve):
+  All states: 48/50 correct (96.0%)
+    MISS: MI — predicted Harris, actual Trump
+    MISS: WI — predicted Harris, actual Trump
+  Swing states: 5/7 correct (71.4%)
+    MISS: MI — predicted Harris, actual Trump
+    MISS: WI — predicted Harris, actual Trump
+
+============================================================
+2. ELECTORAL VOTE PREDICTIONS
+============================================================
+  Actual 2024 result: Trump 312 — Harris 226
+
+  Head-to-head (2024-09-12, 13 states):
+  Polymarket: Trump 155 — Harris 93  (of 248 EV in sample)
+  538: Trump 114 — Harris 134  (of 248 EV in sample)
+
+  Polymarket standalone (Nov 4, all states):
+  Polymarket: Trump 287 — Harris 248  (of 535 EV in sample)
+
+============================================================
+3. TIME-SERIES ACCURACY (daily, March 2024 – Sept 12)
+============================================================
+
+  Period: 2024-03-08 to 2024-09-12
+  Total days with data: 189
+
+  Overall accuracy (mean of daily %):
+    Polymarket: 74.9%  (median 75.0%)
+    538:        90.2%  (median 100.0%)
+
+  Period breakdown (mean daily %):
+    Mar–May:  PM 63.6%  |  538 99.4%  (85 days)
+    Jun–Jul:  PM 87.7%  |  538 97.3%  (61 days)
+    Aug–Sep 12:  PM 79.2%  |  538 62.2%  (43 days)
+
+============================================================
+  Analysis complete.
+============================================================
