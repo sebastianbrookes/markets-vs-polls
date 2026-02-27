@@ -1,0 +1,48 @@
+=================================================================
+  EVENT RESPONSE ANALYSIS: POLYMARKET vs. FIVETHIRTYEIGHT
+=================================================================
+
+─────────────────────────────────────────────────────────────────
+  Biden-Trump Debate  (2024-06-27)  — expected: pro-Trump
+  Biden performed terribly
+─────────────────────────────────────────────────────────────────
+  Polymarket  : baseline=0.1971  settled=0.3454  shift=+0.1482  [CORRECT]
+  538         : baseline=2.4484  settled=4.1343  shift=+1.6859  [CORRECT]
+
+─────────────────────────────────────────────────────────────────
+  Assassination Attempt  (2024-07-13)  — expected: pro-Trump
+  Sympathy rally, show of resilience
+─────────────────────────────────────────────────────────────────
+  Polymarket  : baseline=0.3281  settled=0.3935  shift=+0.0654  [CORRECT]
+  538         : baseline=3.5751  settled=4.1325  shift=+0.5575  [CORRECT]
+
+─────────────────────────────────────────────────────────────────
+  Biden Drops Out  (2024-07-21)  — expected: pro-Harris
+  Replaced weak candidate with stronger one
+─────────────────────────────────────────────────────────────────
+  Polymarket  : baseline=0.3490  settled=0.1783  shift=-0.1707  [CORRECT]
+  538         : baseline=4.7323  settled=4.6362  shift=-0.0960  [CORRECT]
+
+─────────────────────────────────────────────────────────────────
+  Walz VP Pick  (2024-08-06)  — expected: neutral
+  Safe pick, no big electoral impact
+─────────────────────────────────────────────────────────────────
+  Polymarket  : baseline=0.1012  settled=0.0056  shift=-0.0956  [OVERREACTION]
+  538         : baseline=1.6088  settled=0.0598  shift=-1.5491  [OVERREACTION]
+
+─────────────────────────────────────────────────────────────────
+  Harris-Trump Debate  (2024-09-10)  — expected: pro-Harris
+  Harris widely seen as winning
+─────────────────────────────────────────────────────────────────
+  Polymarket  : baseline=0.0895  settled=0.0232  shift=-0.0663  [CORRECT]
+  538         : baseline=-0.7614  settled=-0.7096  shift=+0.0518  [WRONG]  (5 gap days)
+
+=================================================================
+  SCORECARD
+=================================================================
+  Polymarket  : 4/5 correct direction  | 5/5 events with data  | 0 total gap days
+  538         : 3/5 correct direction  | 5/5 events with data  | 5 total gap days
+
+=================================================================
+  Analysis complete.
+=================================================================
