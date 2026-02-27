@@ -30,7 +30,7 @@ from src.clean.utils import PROCESSED_DIR, SWING_STATES
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-FIGURES_DIR = Path(_project_root) / "figures"
+FIGURES_DIR = Path(_project_root) / "figures" / "accuracy"
 
 OVERLAP_CUTOFF = "2024-09-12"
 ELECTION_DATE = "2024-11-05"
@@ -69,7 +69,7 @@ CLR_538 = "#D55E00"
 CLR_TRUMP = "#C53030"
 CLR_HARRIS = "#2B6CB0"
 
-DPI = 200
+DPI = 600
 
 
 def _configure_plot_style():
@@ -578,7 +578,7 @@ def main():
     plot_polymarket_trajectory(trajectory)
     plot_ev_comparison(ev)
 
-    print("Done - 4 plots saved to figures/")
+    print("Done - 4 plots saved to figures/accuracy/")
 
 
 if __name__ == "__main__":

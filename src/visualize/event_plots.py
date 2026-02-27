@@ -44,7 +44,7 @@ CLR_538 = "#ca5800"
 CLR_CORRECT = "#2E8B57"
 CLR_WRONG = "#C53030"
 
-DPI = 200
+DPI = 600
 
 
 def _configure_plot_style():
