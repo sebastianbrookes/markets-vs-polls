@@ -4,7 +4,7 @@
 
 When a major campaign event happens — a debate, an assassination attempt, a candidate dropping out — how quickly and accurately do different forecasting sources react?
 
-This analysis compares **Polymarket**)(prediction market) against **FiveThirtyEight** (a polling aggregator) by measuring how each source responded to five key moments in the 2024 presidential race.
+This analysis compares **Polymarket** (a prediction market) against **FiveThirtyEight** (a polling aggregator) by measuring how each source responded to five key moments in the 2024 presidential race.
 
 ## The Five Events
 
