@@ -15,7 +15,6 @@ from pathlib import Path
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 
@@ -206,25 +205,27 @@ def plot_reaction_scoreboard(summary):
                     ha=ha, va="center", fontsize=9, color=color,
                     fontweight="bold")
 
+    # Background shading: blue (pro-Harris) left, red (pro-Trump) right
+    x_lo, x_hi = ax.get_xlim()
+    x_abs = max(abs(x_lo), abs(x_hi))
+    ax.axvspan(-x_abs, 0, color="#1565C0", alpha=0.12, zorder=0)
+    ax.axvspan(0, x_abs, color="#E53935", alpha=0.12, zorder=0)
+    ax.set_xlim(-x_abs, x_abs)
+
     # Zero line
     ax.axvline(0, color="#333333", linewidth=1, zorder=2)
-
-    # Direction labels
-    ax.text(ax.get_xlim()[1], -0.8, "Pro-Trump \u2192",
-            ha="right", fontsize=9, color="#888888", fontstyle="italic")
-    ax.text(ax.get_xlim()[0], -0.8, "\u2190 Pro-Harris",
-            ha="left", fontsize=9, color="#888888", fontstyle="italic")
 
     ax.set_yticks(y)
     ax.set_yticklabels(event_names)
     ax.invert_yaxis()
     ax.set_xlabel("Reaction Intensity (z-score within source)")
     ax.set_title(
-        "Event Reaction Scoreboard: Who Moved in the Right Direction?\n"
-        "Normalized to each source\u2019s daily volatility \u2014 "
-        "green border = correct, red = wrong",
-        fontweight="bold",
+        "Event Reaction Scoreboard: Who Moved in the Right Direction?",
+        fontweight="bold", pad=15,
     )
+    ax.text(0.5, 1.005, "Normalized to each source\u2019s daily volatility",
+            transform=ax.transAxes, ha="center", va="bottom",
+            fontsize=9, color="#666666", fontstyle="italic")
 
     # Legend
     from matplotlib.patches import Patch
