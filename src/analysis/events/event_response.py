@@ -204,6 +204,118 @@ def compute_event_reaction(swing_avg, event_date, pre_days=3, post_days=7):
     }
 
 
+def compute_indexed_window(swing_avg, event_date, pre_days=2, post_days=10,
+                           normalize=True):
+    """Zero-indexed window around an event for small-multiple plotting.
+
+    Parameters
+    ----------
+    swing_avg : pd.Series
+        Daily swing-state average trump_lead, indexed by date.
+    event_date : str or pd.Timestamp
+        Date of the event.
+    pre_days : int
+        Days before event to include (e.g. 2 → Day -2 through Day -1).
+    post_days : int
+        Days after event to include (e.g. 10 → Day 0 through Day +10).
+    normalize : bool
+        If True, divide by daily volatility (std of day-over-day diffs)
+        to produce z-scored changes.
+
+    Returns
+    -------
+    pd.Series indexed by integer day offset, values = change from Day -1.
+    Empty Series if Day -1 has no data.
+    """
+    event_date = pd.Timestamp(event_date)
+    start = event_date - pd.Timedelta(days=pre_days)
+    end = event_date + pd.Timedelta(days=post_days)
+
+    window = swing_avg[(swing_avg.index >= start) & (swing_avg.index <= end)]
+
+    # Convert to day offsets
+    day_offsets = (window.index - event_date).days
+    window = window.copy()
+    window.index = day_offsets
+
+    # Baseline = Day -1 value
+    if -1 not in window.index:
+        return pd.Series(dtype=float)
+
+    baseline = window.loc[-1]
+    window = window - baseline
+
+    if normalize:
+        daily_vol = swing_avg.diff().dropna().std()
+        if daily_vol > 0:
+            window = window / daily_vol
+
+    return window
+
+
+def compute_raw_indexed_window(swing_avg, event_date, pre_days=2,
+                                post_days=10, scale=1):
+    """Zero-indexed window in raw units (not z-scored).
+
+    Parameters
+    ----------
+    swing_avg : pd.Series
+        Daily swing-state average trump_lead, indexed by date.
+    event_date : str or pd.Timestamp
+        Date of the event.
+    pre_days, post_days : int
+        Window bounds around the event.
+    scale : float
+        Multiply values by this factor (e.g. 100 to convert
+        probability to percentage points).
+
+    Returns
+    -------
+    pd.Series indexed by integer day offset, values = change from
+    Day -1 in scaled units.  Empty Series if Day -1 has no data.
+    """
+    event_date = pd.Timestamp(event_date)
+    start = event_date - pd.Timedelta(days=pre_days)
+    end = event_date + pd.Timedelta(days=post_days)
+
+    window = swing_avg[(swing_avg.index >= start) & (swing_avg.index <= end)]
+    day_offsets = (window.index - event_date).days
+    window = window.copy()
+    window.index = day_offsets
+
+    if -1 not in window.index:
+        return pd.Series(dtype=float)
+
+    baseline = window.loc[-1]
+    window = (window - baseline) * scale
+    return window
+
+
+def detect_price_in_day(window, threshold_pct=0.90):
+    """Find the first day >= 0 where the source reaches *threshold_pct*
+    of its total move (Day 10 value minus 0, since already zeroed).
+
+    Returns the integer day offset, or None if never crossed.
+    """
+    if window.empty or 10 not in window.index:
+        return None
+
+    total_move = window.loc[10]
+    if total_move == 0:
+        return None
+
+    threshold = threshold_pct * total_move
+    post = window[window.index >= 0].sort_index()
+
+    for day, val in post.items():
+        if total_move > 0 and val >= threshold:
+            return int(day)
+        if total_move < 0 and val <= threshold:
+            return int(day)
+
+    return None
+
+
 def classify_direction(shift, expected):
     """Classify whether the shift matched the expected direction."""
     if np.isnan(shift):

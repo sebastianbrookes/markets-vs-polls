@@ -2,9 +2,10 @@
 Visualize event response analysis: how Polymarket and FiveThirtyEight
 reacted to major 2024 campaign events.
 
-Generates two plots:
+Generates three plots:
     1. Event timeline — full March-Sept 12 with event bands
     2. Reaction scoreboard — grouped horizontal bars per event
+    3. Indexed event study — small multiples showing response lag per event
 
 Run from project root:
     python -m src.visualize.event_plots
@@ -28,6 +29,8 @@ from src.analysis.events.event_response import (
     load_data,
     compute_swing_average,
     compute_538_swing_timeseries,
+    compute_raw_indexed_window,
+    detect_price_in_day,
     build_reaction_summary,
 )
 
@@ -36,8 +39,8 @@ from src.analysis.events.event_response import (
 # ---------------------------------------------------------------------------
 FIGURES_DIR = Path(_project_root) / "figures" / "events"
 
-CLR_PM = "#0072B2"
-CLR_538 = "#D55E00"
+CLR_PM = "#1f4e79"
+CLR_538 = "#ca5800"
 CLR_CORRECT = "#2E8B57"
 CLR_WRONG = "#C53030"
 
@@ -252,6 +255,165 @@ def plot_reaction_scoreboard(summary):
 
 
 # ---------------------------------------------------------------------------
+# Plot 3: Indexed Event Study (small multiples)
+# ---------------------------------------------------------------------------
+def _align_dual_axes(ax_left, ax_right):
+    """Force y=0 to the same vertical pixel on both axes.
+
+    Computes the union of both y-ranges and sets symmetric limits
+    so zero aligns perfectly.
+    """
+    lo_l, hi_l = ax_left.get_ylim()
+    lo_r, hi_r = ax_right.get_ylim()
+
+    # Fraction of total range that is below zero, for each axis
+    frac_l = abs(lo_l) / (abs(lo_l) + abs(hi_l)) if (abs(lo_l) + abs(hi_l)) else 0.5
+    frac_r = abs(lo_r) / (abs(lo_r) + abs(hi_r)) if (abs(lo_r) + abs(hi_r)) else 0.5
+
+    # Use the larger fraction so neither axis gets clipped
+    frac = max(frac_l, frac_r)
+
+    # Expand each axis so that frac of the range sits below zero
+    range_l = max(abs(lo_l) / frac, abs(hi_l) / (1 - frac)) if frac not in (0, 1) else abs(lo_l) + abs(hi_l)
+    range_r = max(abs(lo_r) / frac, abs(hi_r) / (1 - frac)) if frac not in (0, 1) else abs(lo_r) + abs(hi_r)
+
+    ax_left.set_ylim(-frac * range_l, (1 - frac) * range_l)
+    ax_right.set_ylim(-frac * range_r, (1 - frac) * range_r)
+
+
+def _draw_panel(ax_left, event, pm_swing, p538_swing, is_hero=False):
+    """Draw one event panel with dual y-axes, step PM, smooth 538."""
+    edate = event["date"]
+
+    # Start at Day -1 to remove pre-event noise
+    pm_win = compute_raw_indexed_window(pm_swing, edate, pre_days=1,
+                                         scale=100)
+    p538_win = compute_raw_indexed_window(p538_swing, edate, pre_days=1,
+                                           scale=1)
+
+    # --- Left axis: Polymarket (step line) ---
+    if not pm_win.empty:
+        ax_left.step(pm_win.index, pm_win.values, where="post",
+                     color=CLR_PM, linewidth=2.2, label="Polymarket",
+                     zorder=3)
+    ax_left.set_ylabel("Change in Win Prob. (% pts)", color=CLR_PM,
+                        fontsize=9 if not is_hero else 11)
+    ax_left.tick_params(axis="y", colors=CLR_PM, labelsize=9)
+
+    # --- Right axis: 538 (smooth line) ---
+    ax_right = ax_left.twinx()
+    if not p538_win.empty:
+        ax_right.plot(p538_win.index, p538_win.values,
+                      color=CLR_538, linewidth=2.5, label="538",
+                      zorder=3)
+    ax_right.set_ylabel("Change in Vote Share (% pts)", color=CLR_538,
+                         fontsize=9 if not is_hero else 11)
+    ax_right.tick_params(axis="y", colors=CLR_538, labelsize=9)
+
+    # --- Zero-align both axes ---
+    _align_dual_axes(ax_left, ax_right)
+
+    # --- Reference lines ---
+    ax_left.axvline(0, color="#888888", linewidth=1, linestyle="--",
+                    alpha=0.6, zorder=2)
+    ax_left.axhline(0, color="#888888", linewidth=0.8, linestyle="-",
+                    alpha=0.4, zorder=1)
+
+    # --- Title & direction badge ---
+    direction_labels = {
+        "pro-Trump": "+Trump",
+        "pro-Harris": "+Harris",
+        "neutral": "neutral",
+    }
+    badge = direction_labels.get(event["expected_direction"], "")
+    title = f"{event['name']}  ({badge})" if badge else event["name"]
+    ax_left.set_title(title, fontsize=12 if is_hero else 10,
+                       fontweight="bold")
+
+    # --- Hero-only annotations ---
+    if is_hero:
+        pm_lag = detect_price_in_day(pm_win)
+        p538_lag = detect_price_in_day(p538_win)
+
+        # Day 0 label
+        ax_left.annotate(
+            "Biden\nwithdraws", xy=(0, 0),
+            xytext=(0, 12), textcoords="offset points",
+            fontsize=9, ha="center", color="#555555",
+            fontstyle="italic", zorder=5,
+        )
+
+        # Lag bracket — positioned close to the data
+        if pm_lag is not None and p538_lag is not None and p538_lag > pm_lag:
+            # Place bracket at ~30% of PM's total drop (near the top of
+            # the data region, not floating in white space)
+            pm_day10 = pm_win.loc[10] if 10 in pm_win.index else 0
+            bracket_y = pm_day10 * 0.25
+            ax_left.annotate(
+                "", xy=(p538_lag, bracket_y),
+                xytext=(pm_lag, bracket_y),
+                arrowprops=dict(arrowstyle="<->", color="#333333",
+                                lw=1.5),
+                zorder=5,
+            )
+            mid = (pm_lag + p538_lag) / 2
+            lag_days = p538_lag - pm_lag
+            ax_left.text(mid, bracket_y,
+                          f"{lag_days}-day lag",
+                          ha="center", va="bottom", fontsize=10,
+                          fontweight="bold", color="#333333", zorder=5)
+
+    ax_left.set_xlabel("Days from Event")
+
+    _style_axis(ax_left)
+    ax_right.spines["top"].set_visible(False)
+    ax_right.grid(False)
+
+    return ax_right
+
+
+def plot_indexed_event_study(pm_swing, p538_swing):
+    """Single hero panel: market speed vs. poll lag for Biden dropout."""
+    from matplotlib.lines import Line2D
+
+    hero_event = next(e for e in EVENTS if e["name"] == "Biden Drops Out")
+
+    fig, ax = plt.subplots(figsize=(13, 7))
+    _draw_panel(ax, hero_event, pm_swing, p538_swing, is_hero=True)
+
+    fig.suptitle(
+        "Market Traders Spotted the Harris Surge\n"
+        "a Week Before Polls",
+        fontsize=15, fontweight="bold", y=1.03,
+    )
+
+    # --- Combined legend ---
+    legend_elements = [
+        Line2D([0], [0], color=CLR_PM, linewidth=2.2,
+               drawstyle="steps-post", label="Polymarket (win prob.)"),
+        Line2D([0], [0], color=CLR_538, linewidth=2.5,
+               label="FiveThirtyEight (vote share)"),
+    ]
+    fig.legend(handles=legend_elements, loc="upper center", ncol=2,
+               bbox_to_anchor=(0.5, -0.02), fontsize=11,
+               frameon=True, framealpha=0.9)
+
+    # --- Footnote ---
+    fig.text(0.5, -0.10,
+             "Left axis (blue): change in percentage-point win "
+             "probability.  Right axis (orange): change in "
+             "percentage-point vote share.\n"
+             "Both zeroed to Day \u22121 baseline.",
+             ha="center", va="top", fontsize=8, color="#777777",
+             fontstyle="italic")
+
+    path = FIGURES_DIR / "event_dropout_response.png"
+    fig.savefig(path, dpi=DPI, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved {path.name}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main():
@@ -271,8 +433,9 @@ def main():
     print("Generating plots...")
     plot_event_timeline(pm_swing, p538_swing)
     plot_reaction_scoreboard(summary)
+    plot_indexed_event_study(pm_swing, p538_swing)
 
-    print("Done — 2 plots saved to figures/events/")
+    print("Done — 3 plots saved to figures/events/")
 
 
 if __name__ == "__main__":
