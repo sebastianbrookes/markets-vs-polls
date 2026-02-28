@@ -398,7 +398,7 @@ def plot_timeseries_crossover(ts):
     ax.legend(loc="lower left", frameon=False, fontsize=11)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "accuracy_timeseries.png"
+    path = FIGURES_DIR / "timeseries.png"
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved {path.name}")
@@ -445,7 +445,7 @@ def plot_head_to_head(metrics):
     _style_axis(ax)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "accuracy_head_to_head.png"
+    path = FIGURES_DIR / "head-to-head.png"
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved {path.name}")
@@ -493,7 +493,7 @@ def plot_polymarket_trajectory(metrics):
     _style_axis(ax)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "accuracy_pm_trajectory.png"
+    path = FIGURES_DIR / "pm-trajectory.png"
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved {path.name}")
@@ -552,7 +552,7 @@ def plot_ev_comparison(metrics):
     _style_axis(ax)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "accuracy_ev_comparison.png"
+    path = FIGURES_DIR / "ev-comparison.png"
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved {path.name}")
