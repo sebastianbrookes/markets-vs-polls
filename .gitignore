@@ -20,3 +20,4 @@ __pycache__/
 # raw data
 data/raw/**/*.csv
 data/raw/**/*.xlsx
+!data/raw/events/events.csv

@@ -1,0 +1,23 @@
+date,event,category,affects
+2024-01-15,Iowa Republican caucus — Trump wins decisively,primary,Trump
+2024-01-23,New Hampshire primary — Trump wins; Haley stays in,primary,Trump
+2024-02-24,South Carolina primary — Trump wins Haley's home state,primary,Trump
+2024-03-05,Super Tuesday — Trump sweeps 14 states,primary,Trump
+2024-03-06,Trump clinches GOP nomination; Haley drops out,primary,Trump
+2024-05-30,Trump convicted on 34 felony counts (hush money trial),legal,Trump
+2024-06-27,Biden-Trump debate — poor Biden performance,debate,both
+2024-07-01,Supreme Court rules on presidential immunity,legal,Trump
+2024-07-13,Trump assassination attempt (Butler PA rally),security,Trump
+2024-07-15,Republican National Convention begins; JD Vance announced as VP,convention,Trump
+2024-07-21,Biden drops out of race; endorses Kamala Harris,withdrawal,both
+2024-07-22,Harris launches campaign; flood of endorsements and fundraising,campaign,Harris
+2024-08-06,Harris selects Tim Walz as VP,vp_pick,Harris
+2024-08-19,Democratic National Convention begins,convention,Harris
+2024-08-22,Harris formally accepts Democratic nomination,convention,Harris
+2024-09-10,Harris-Trump debate (ABC News),debate,both
+2024-09-15,Second Trump assassination attempt (golf course FL),security,Trump
+2024-10-01,Vance-Walz VP debate (CBS News),debate,both
+2024-10-07,One-year anniversary of Oct 7 attack — foreign policy focus,foreign_policy,both
+2024-10-23,Harris CNN town hall,campaign,Harris
+2024-10-27,Trump Madison Square Garden rally — controversial remarks,campaign,Trump
+2024-11-05,Election Day,election,both
