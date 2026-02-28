@@ -454,11 +454,11 @@ def main():
 
     print("Generating plots...")
     plot_event_timeline(pm_swing, p538_swing)
-    print("  Saved event_timeline.png")
+    print("  Saved timeline.png")
     plot_reaction_scoreboard(summary)
-    print("  Saved event_scoreboard.png")
+    print("  Saved scoreboard.png")
     plot_indexed_event_study(pm_swing, p538_swing)
-    print("  Saved event_dropout_response.png")
+    print("  Saved dropout-response.png")
     print("Success. All figures saved to figures/events/")
 
 
