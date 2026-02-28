@@ -320,7 +320,7 @@ def plot_reaction_scoreboard(summary):
     ax.set_yticklabels(event_names)
     ax.invert_yaxis()
     ax.set_xlabel("Reaction intensity (z-score, normalized to daily volatility)")
-    ax.grid(axis="x", linestyle="--", alpha=0.5)
+    ax.grid(False)
 
     legend_elements = [
         Patch(facecolor=THEME.TEXT_MAIN, edgecolor=THEME.TEXT_MAIN, label="Expected direction"),
