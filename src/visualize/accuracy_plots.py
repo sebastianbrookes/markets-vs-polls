@@ -141,7 +141,10 @@ def _compute_accuracy(snapshot, fec_winners, states=None):
 
 def _compute_ev_share(snapshot, fec, states=None):
     """Summarize EV split implied by model predictions."""
-    merged = snapshot[["state", "predicted_winner"]].merge(
+    predicted = snapshot[["state", "predicted_winner"]].drop_duplicates(
+        subset="state", keep="last"
+    )
+    merged = predicted.merge(
         fec[["state", "electoral_votes"]],
         on="state",
         how="inner",

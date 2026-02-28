@@ -12,6 +12,12 @@ Compares **Polymarket** (prediction market) and **FiveThirtyEight** (poll aggreg
 python -m src.analysis.accuracy.accuracy
 ```
 
+Compatibility alias (legacy):
+
+```
+python -m src.analysis.accuracy
+```
+
 Raw output is saved in [`result.txt`](result.txt).
 
 #### Input Data
