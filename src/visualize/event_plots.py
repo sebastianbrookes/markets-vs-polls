@@ -132,6 +132,11 @@ def _align_dual_axes(ax_left, ax_right):
     l_range = l_max if l_max > 0 else abs(l_min)
     r_range = r_max if r_max > 0 else abs(r_min)
 
+    if ratio >= 1:
+        ax_left.set_ylim(-l_range, l_range)
+        ax_right.set_ylim(-r_range, r_range)
+        return
+
     ax_left.set_ylim(-ratio / (1 - ratio) * l_range, l_range)
     ax_right.set_ylim(-ratio / (1 - ratio) * r_range, r_range)
 
