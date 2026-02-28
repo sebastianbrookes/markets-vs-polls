@@ -19,8 +19,6 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
@@ -43,7 +41,9 @@ from src.analysis.events.event_response import (
 # ---------------------------------------------------------------------------
 @dataclass
 class Theme:
-    """Centralized design tokens."""
+    """
+    Centralized design tokens for consistent plot styling.
+    """
     PM_COLOR: str = "#004276"      # Deep Navy
     F38_COLOR: str = "#D95F02"     # Burnt Orange
     CORRECT_COLOR: str = "#4A7c59" # Muted Green
@@ -59,7 +59,13 @@ FIGURES_DIR = Path(_project_root) / "figures" / "events"
 
 
 def apply_style():
-    """Applies a clean matplotlib style."""
+    """
+    Apply a clean matplotlib style using the Theme design tokens.
+
+    Returns
+    -------
+    None
+    """
     plt.rcParams.update({
         "figure.dpi": Theme.DPI,
         "figure.facecolor": "white",
@@ -86,8 +92,10 @@ def apply_style():
     })
 
 
-def format_header(fig: Figure, title: str, subtitle: str):
-    """Adds a left-aligned headline and subheadline to the figure."""
+def format_header(fig, title, subtitle):
+    """
+    Add a left-aligned headline and subheadline to a figure.
+    """
     fig.text(0.05, 0.98, title, fontsize=16, fontweight="bold", ha="left", va="top")
     fig.text(0.05, 0.93, subtitle, fontsize=11, color=Theme.TEXT_MUTED, ha="left", va="top")
 
@@ -95,8 +103,21 @@ def format_header(fig: Figure, title: str, subtitle: str):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _align_dual_axes(ax_left: Axes, ax_right: Axes):
-    """Mathematically aligns the y=0 line on two overlapping axes."""
+def _align_dual_axes(ax_left, ax_right):
+    """
+    Align the y=0 line on two overlapping dual axes.
+
+    Parameters
+    ----------
+    ax_left : Axes
+        The left-side (primary) matplotlib axes.
+    ax_right : Axes
+        The right-side (secondary) matplotlib axes.
+
+    Returns
+    -------
+    None
+    """
     l_min, l_max = ax_left.get_ylim()
     r_min, r_max = ax_right.get_ylim()
 
@@ -119,15 +140,30 @@ def _align_dual_axes(ax_left: Axes, ax_right: Axes):
 # Plot 1: Event Timeline
 # ---------------------------------------------------------------------------
 def plot_event_timeline(pm_swing, p538_swing):
-    """Line chart tracking the campaign, using direct labeling instead of legends."""
+    """
+    Plot a dual-axis line chart tracking campaign swing-state
+    averages for Polymarket and FiveThirtyEight over June
+    through September 2024.
+
+    Parameters
+    ----------
+    pm_swing : pd.Series
+        Daily Polymarket swing-state average, datetime-indexed.
+    p538_swing : pd.Series
+        Daily FiveThirtyEight swing-state average,
+        datetime-indexed.
+
+    Returns
+    -------
+    None
+        Saves figure to figures/events/event_timeline.png.
+    """
     start_cutoff = pd.Timestamp("2024-06-01")
     end_cutoff = pd.Timestamp("2024-09-12")
     
     # Filter data to the June–September window
     pm_filtered = pm_swing[(pm_swing.index >= start_cutoff) & (pm_swing.index <= end_cutoff)]
     p538_filtered = p538_swing[(p538_swing.index >= start_cutoff) & (p538_swing.index <= end_cutoff)]
-
-    # Keep the wide figure to stretch the narrower time window, creating a granular look
     fig, ax1 = plt.subplots(figsize=(15, 6.5))
 
     # Increased 'top' from 0.72 to 0.82 to decrease padding below title/subtitle
@@ -211,10 +247,25 @@ def plot_event_timeline(pm_swing, p538_swing):
 
 
 # ---------------------------------------------------------------------------
-# Plot 2: Reaction Scoreboard
+# Plot 2: Event Scoreboard
 # ---------------------------------------------------------------------------
 def plot_reaction_scoreboard(summary):
-    """Horizontal bar chart indicating directional movement correctly/incorrectly."""
+    """
+    Plot a horizontal bar chart comparing how each source
+    reacted to campaign events, scored by direction and
+    intensity (z-score).
+
+    Parameters
+    ----------
+    summary : pd.DataFrame
+        Reaction summary with columns event, source,
+        shift_z, and direction_match.
+
+    Returns
+    -------
+    None
+        Saves figure to figures/events/event_scoreboard.png.
+    """
     event_names = [e["name"] for e in EVENTS]
     y = np.arange(len(event_names))
     bar_h = 0.35
@@ -282,10 +333,28 @@ def plot_reaction_scoreboard(summary):
 
 
 # ---------------------------------------------------------------------------
-# Plot 3: Indexed Event Study (Hero Panel)
+# Plot 3: Event Dropout Response
 # ---------------------------------------------------------------------------
 def plot_indexed_event_study(pm_swing, p538_swing):
-    """Detailed view of a single event (Biden dropping out) showing the lag."""
+    """
+    Plot an indexed event study of the Biden dropout,
+    showing the lag between Polymarket and FiveThirtyEight
+    reactions with a bracket annotation.
+
+    Parameters
+    ----------
+    pm_swing : pd.Series
+        Daily Polymarket swing-state average, datetime-indexed.
+    p538_swing : pd.Series
+        Daily FiveThirtyEight swing-state average,
+        datetime-indexed.
+
+    Returns
+    -------
+    None
+        Saves figure to
+        figures/events/event_dropout_response.png.
+    """
     hero_event = next(e for e in EVENTS if e["name"] == "Biden Drops Out")
     edate = hero_event["date"]
 
@@ -310,24 +379,12 @@ def plot_indexed_event_study(pm_swing, p538_swing):
     ax1.axhline(0, color=Theme.TEXT_MAIN, linewidth=1, zorder=2)
     ax1.text(0, ax1.get_ylim()[1]*0.95, " Biden withdraws", color=Theme.TEXT_MAIN, fontsize=9)
 
-    start_x = pm_win.index.min()
-    ax1.annotate("Trump leads", xy=(start_x, 0), xytext=(10, 8), 
-                 textcoords="offset points", color=Theme.TEXT_MUTED, fontsize=9, va="bottom")
-    ax1.annotate("Harris leads", xy=(start_x, 0), xytext=(10, -8), 
-                 textcoords="offset points", color=Theme.TEXT_MUTED, fontsize=9, va="top")
-
-    # ---------------------------------------------------------
-    # Fix 1: Use an in-graph key at the bottom left instead of right-side labels
-    # ---------------------------------------------------------
     legend_elements = [
         Line2D([0], [0], color=Theme.PM_COLOR, lw=3, label="Polymarket (Percentage points)"),
         Line2D([0], [0], color=Theme.F38_COLOR, lw=3, label="FiveThirtyEight (Vote share shift)")
     ]
     ax1.legend(handles=legend_elements, loc="lower left", frameon=False, fontsize=10, borderaxespad=1.5)
 
-    # ---------------------------------------------------------
-    # Fix 2: Calculate lag based on max daily drop to match visual intuition (8 days)
-    # ---------------------------------------------------------
     # Use the day of the steepest drop to anchor the measurement, skipping `detect_price_in_day`
     pm_lag = pm_win.diff().idxmin()
     p538_lag = p538_win.diff().idxmin()
@@ -376,6 +433,14 @@ def plot_indexed_event_study(pm_swing, p538_swing):
 # Main Execution
 # ---------------------------------------------------------------------------
 def main():
+    """
+    Load data, compute swing-state averages, and generate
+    all three event analysis figures.
+
+    Returns
+    -------
+    None
+    """
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     apply_style()
 
