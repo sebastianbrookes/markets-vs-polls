@@ -1,5 +1,5 @@
+# ai
 CLAUDE.md
-/prelim-info/
 /.agents/
 .claude/
 
@@ -22,5 +22,6 @@ data/raw/**/*.csv
 data/raw/**/*.xlsx
 !data/raw/events/events.csv
 
-# local deliverables
+# assignment-specific
 deliverables/
+/prelim-info/
