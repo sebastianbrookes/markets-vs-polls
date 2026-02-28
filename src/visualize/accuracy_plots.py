@@ -71,7 +71,7 @@ CLR_HARRIS = "#2B6CB0"
 DPI = 300
 
 
-def _configure_plot_style():
+def configure_plot_style():
     """Apply a consistent style baseline for all figures."""
     plt.style.use("seaborn-v0_8-whitegrid")
     plt.rcParams.update(
@@ -100,40 +100,40 @@ def load_data():
     return pm, p538, fec
 
 
-def _latest_per_state(p538, as_of):
+def latest_per_state(p538, as_of):
     """Forward-fill 538 data by taking latest available value per state."""
     mask = p538["date"] <= pd.Timestamp(as_of)
     subset = p538[mask].sort_values(["state", "date"])
     return subset.drop_duplicates(subset="state", keep="last")
 
 
-def _predict_winner_pm(df):
+def predict_winner_pm(df):
     df = df.copy()
     df["predicted_winner"] = np.where(df["trump_prob"] > 0.5, "Trump", "Harris")
     return df
 
 
-def _predict_winner_538(df):
+def predict_winner_538(df):
     df = df.copy()
     df["predicted_winner"] = np.where(df["trump_pct"] > df["dem_pct"], "Trump", "Harris")
     return df
 
 
-def _pm_snapshot(pm, as_of, states=None):
-    snapshot = _predict_winner_pm(pm[pm["date"] == pd.Timestamp(as_of)])
+def pm_snapshot(pm, as_of, states=None):
+    snapshot = predict_winner_pm(pm[pm["date"] == pd.Timestamp(as_of)])
     if states is not None:
         snapshot = snapshot[snapshot["state"].isin(states)]
     return snapshot
 
 
-def _p538_snapshot(p538, as_of, states=None):
-    snapshot = _predict_winner_538(_latest_per_state(p538, as_of))
+def p538_snapshot(p538, as_of, states=None):
+    snapshot = predict_winner_538(latest_per_state(p538, as_of))
     if states is not None:
         snapshot = snapshot[snapshot["state"].isin(states)]
     return snapshot
 
 
-def _compute_accuracy(snapshot, fec_winners, states=None):
+def compute_accuracy(snapshot, fec_winners, states=None):
     """Return dict with winner-call accuracy for a prediction snapshot."""
     subset = snapshot if states is None else snapshot[snapshot["state"].isin(states)]
     if subset.empty:
@@ -153,7 +153,7 @@ def _compute_accuracy(snapshot, fec_winners, states=None):
     return {"correct": correct, "n_states": n_states, "pct": correct / n_states * 100}
 
 
-def _compute_ev_share(snapshot, fec, states=None):
+def compute_ev_share(snapshot, fec, states=None):
     """Summarize EV split implied by model predictions."""
     predicted = snapshot[["state", "predicted_winner"]].drop_duplicates(
         subset="state", keep="last"
@@ -204,13 +204,13 @@ def compute_daily_accuracy(pm, p538, fec):
         pm_day = pm[(pm["date"] == as_of_date) & (pm["state"].isin(OVERLAP_STATES))]
         if pm_day.empty:
             continue
-        pm_day = _predict_winner_pm(pm_day)
+        pm_day = predict_winner_pm(pm_day)
 
-        p5_day = _latest_per_state(p538, as_of_date)
+        p5_day = latest_per_state(p538, as_of_date)
         p5_day = p5_day[p5_day["state"].isin(OVERLAP_STATES)]
         if p5_day.empty:
             continue
-        p5_day = _predict_winner_538(p5_day)
+        p5_day = predict_winner_538(p5_day)
 
         common_states = sorted(
             set(pm_day["state"]) & set(p5_day["state"]) & set(fec_winners.index)
@@ -218,8 +218,8 @@ def compute_daily_accuracy(pm, p538, fec):
         if not common_states:
             continue
 
-        pm_stats = _compute_accuracy(pm_day, fec_winners, common_states)
-        p5_stats = _compute_accuracy(p5_day, fec_winners, common_states)
+        pm_stats = compute_accuracy(pm_day, fec_winners, common_states)
+        p5_stats = compute_accuracy(p5_day, fec_winners, common_states)
 
         records.append(
             {
@@ -239,8 +239,8 @@ def build_head_to_head_metrics(pm, p538, fec):
     """Compute Sept 12 grouped-bar values from source data."""
     fec_winners = fec.set_index("state")["winner"]
 
-    pm_snap = _pm_snapshot(pm, OVERLAP_CUTOFF, OVERLAP_STATES)
-    p538_snap = _p538_snapshot(p538, OVERLAP_CUTOFF, OVERLAP_STATES)
+    pm_snap = pm_snapshot(pm, OVERLAP_CUTOFF, OVERLAP_STATES)
+    p538_snap = p538_snapshot(p538, OVERLAP_CUTOFF, OVERLAP_STATES)
 
     groups = [
         ("All 13 States", OVERLAP_STATES),
@@ -249,8 +249,8 @@ def build_head_to_head_metrics(pm, p538, fec):
 
     rows = []
     for group_label, states in groups:
-        pm_stats = _compute_accuracy(pm_snap, fec_winners, states)
-        p538_stats = _compute_accuracy(p538_snap, fec_winners, states)
+        pm_stats = compute_accuracy(pm_snap, fec_winners, states)
+        p538_stats = compute_accuracy(p538_snap, fec_winners, states)
         rows.append(
             {
                 "group": group_label,
@@ -272,16 +272,16 @@ def build_polymarket_trajectory_metrics(pm, fec):
 
     rows = []
     for label, as_of_date, state_subset in snapshots:
-        snapshot = _pm_snapshot(pm, as_of_date)
+        snapshot = pm_snapshot(pm, as_of_date)
         states = (
             sorted(snapshot["state"].unique())
             if state_subset is None
             else state_subset
         )
 
-        all_stats = _compute_accuracy(snapshot, fec_winners, states)
+        all_stats = compute_accuracy(snapshot, fec_winners, states)
         swing_states = sorted(set(SWING_STATES) & set(snapshot["state"]))
-        swing_stats = _compute_accuracy(snapshot, fec_winners, swing_states)
+        swing_stats = compute_accuracy(snapshot, fec_winners, swing_states)
 
         rows.append(
             {
@@ -296,15 +296,15 @@ def build_polymarket_trajectory_metrics(pm, fec):
 
 def build_ev_comparison_metrics(pm, p538, fec):
     """Compute EV share bars from prediction snapshots."""
-    pm_snap = _pm_snapshot(pm, OVERLAP_CUTOFF, OVERLAP_STATES)
-    p538_snap = _p538_snapshot(p538, OVERLAP_CUTOFF, OVERLAP_STATES)
+    pm_snap = pm_snapshot(pm, OVERLAP_CUTOFF, OVERLAP_STATES)
+    p538_snap = p538_snapshot(p538, OVERLAP_CUTOFF, OVERLAP_STATES)
 
     actual = fec[["state", "winner"]].rename(columns={"winner": "predicted_winner"})
 
     rows = [
-        {"label": "Polymarket\nSept 12", **_compute_ev_share(pm_snap, fec, OVERLAP_STATES)},
-        {"label": "538\nSept 12", **_compute_ev_share(p538_snap, fec, OVERLAP_STATES)},
-        {"label": "Actual\nResult", **_compute_ev_share(actual, fec)},
+        {"label": "Polymarket\nSept 12", **compute_ev_share(pm_snap, fec, OVERLAP_STATES)},
+        {"label": "538\nSept 12", **compute_ev_share(p538_snap, fec, OVERLAP_STATES)},
+        {"label": "Actual\nResult", **compute_ev_share(actual, fec)},
     ]
     return pd.DataFrame(rows)
 
@@ -313,14 +313,14 @@ def build_ev_comparison_metrics(pm, p538, fec):
 # Plot helpers
 # ---------------------------------------------------------------------------
 
-def _style_axis(ax, y_grid_alpha=0.3):
+def style_axis(ax, y_grid_alpha=0.3):
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.grid(axis="y", alpha=y_grid_alpha)
     ax.grid(axis="x", visible=False)
 
 
-def _annotate_bars(ax, bars, color, y_offset=1.5, bold=False):
+def annotate_bars(ax, bars, color, y_offset=1.5, bold=False):
     for bar in bars:
         ax.text(
             bar.get_x() + bar.get_width() / 2,
@@ -334,7 +334,7 @@ def _annotate_bars(ax, bars, color, y_offset=1.5, bold=False):
         )
 
 
-def _save_figure(fig, filename):
+def save_figure(fig, filename):
     path = FIGURES_DIR / filename
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
@@ -400,7 +400,7 @@ def plot_timeseries_crossover(ts):
         zorder=4,
     )
 
-    _style_axis(ax, y_grid_alpha=0.4)
+    style_axis(ax, y_grid_alpha=0.4)
     ax.set_ylim(30, 108)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{int(v)}%"))
     ax.set_ylabel("States Predicted Correctly (%)")
@@ -416,7 +416,7 @@ def plot_timeseries_crossover(ts):
     ax.legend(loc="lower left", frameon=False, fontsize=11)
 
     fig.tight_layout()
-    _save_figure(fig, "timeseries.png")
+    save_figure(fig, "timeseries.png")
 
 
 # ---------------------------------------------------------------------------
@@ -442,8 +442,8 @@ def plot_head_to_head(metrics):
         color=CLR_538,
     )
 
-    _annotate_bars(ax, bars_pm, color=CLR_PM, bold=True)
-    _annotate_bars(ax, bars_538, color=CLR_538, bold=True)
+    annotate_bars(ax, bars_pm, color=CLR_PM, bold=True)
+    annotate_bars(ax, bars_538, color=CLR_538, bold=True)
 
     ax.set_ylim(0, 105)
     ax.set_ylabel("States Predicted Correctly (%)")
@@ -454,10 +454,10 @@ def plot_head_to_head(metrics):
     ax.set_xticks(x)
     ax.set_xticklabels(groups)
     ax.legend(frameon=False)
-    _style_axis(ax)
+    style_axis(ax)
 
     fig.tight_layout()
-    _save_figure(fig, "head-to-head.png")
+    save_figure(fig, "head-to-head.png")
 
 
 # ---------------------------------------------------------------------------
@@ -484,8 +484,8 @@ def plot_polymarket_trajectory(metrics):
         alpha=0.55,
     )
 
-    _annotate_bars(ax, bars_all, color=CLR_PM, bold=True)
-    _annotate_bars(ax, bars_sw, color=CLR_PM)
+    annotate_bars(ax, bars_all, color=CLR_PM, bold=True)
+    annotate_bars(ax, bars_sw, color=CLR_PM)
 
     final_pct = float(all_vals[-1]) if len(all_vals) else 0.0
     ax.set_ylim(0, 115)
@@ -497,10 +497,10 @@ def plot_polymarket_trajectory(metrics):
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
     ax.legend(frameon=False)
-    _style_axis(ax)
+    style_axis(ax)
 
     fig.tight_layout()
-    _save_figure(fig, "pm-trajectory.png")
+    save_figure(fig, "pm-trajectory.png")
 
 
 # ---------------------------------------------------------------------------
@@ -553,10 +553,10 @@ def plot_ev_comparison(metrics):
     ax.set_title("Polymarket Came Closer to the Actual Electoral Vote Split", fontweight="bold")
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
-    _style_axis(ax)
+    style_axis(ax)
 
     fig.tight_layout()
-    _save_figure(fig, "ev-comparison.png")
+    save_figure(fig, "ev-comparison.png")
 
 
 # ---------------------------------------------------------------------------
@@ -565,7 +565,7 @@ def plot_ev_comparison(metrics):
 
 def main():
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-    _configure_plot_style()
+    configure_plot_style()
 
     print("Loading data...")
     pm, p538, fec = load_data()
