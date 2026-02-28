@@ -1,4 +1,15 @@
-"""Event-response visualizations for campaign events."""
+"""
+Visualize event-response analysis: how Polymarket and FiveThirtyEight
+reacted to major 2024 U.S. presidential campaign events.
+
+Generates three plots:
+    1. Event timeline (dual-axis swing-state averages, Jun-Sep 12)
+    2. Reaction scoreboard (z-scored shift intensity per event)
+    3. Indexed event study (Biden dropout response timing)
+
+Run from project root:
+    python -m src.visualize.event_plots
+"""
 
 import sys
 from dataclasses import dataclass
@@ -25,7 +36,7 @@ from src.analysis.events.event_response import (
 )
 
 
-@dataclass(frozen=True)
+@dataclass
 class Theme:
     PM_COLOR: str = "#004276"
     F38_COLOR: str = "#D95F02"
