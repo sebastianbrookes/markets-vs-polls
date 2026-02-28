@@ -205,7 +205,7 @@ def plot_event_timeline(pm_swing, p538_swing):
     for event in EVENTS:
         edate = pd.Timestamp(event["date"])
         
-        # Skip events that fall outside our zoomed-in window
+        # Skip events that fall outside our window
         if edate < start_cutoff or edate > end_cutoff:
             continue
             
@@ -213,7 +213,7 @@ def plot_event_timeline(pm_swing, p538_swing):
         ax1.axvspan(edate - pd.Timedelta(days=1), edate + pd.Timedelta(days=1), 
                     color=Theme.EVENT_BAND, zorder=1)
         
-        # Manual level curation for strict horizontal alignment
+        # Horizontal alignment
         name = event["name"]
         if name in ["Biden-Trump Debate", "Walz VP Pick", "Harris-Trump Debate"]:
             level = 0
@@ -385,7 +385,7 @@ def plot_indexed_event_study(pm_swing, p538_swing):
     ]
     ax1.legend(handles=legend_elements, loc="lower left", frameon=False, fontsize=10, borderaxespad=1.5)
 
-    # Use the day of the steepest drop to anchor the measurement, skipping `detect_price_in_day`
+    # Use the day of the steepest drop to anchor the measurement
     pm_lag = pm_win.diff().idxmin()
     p538_lag = p538_win.diff().idxmin()
 
