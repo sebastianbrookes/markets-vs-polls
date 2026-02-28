@@ -1,6 +1,10 @@
 CLAUDE.md
 /prelim-info/
 /.agents/
+.claude/
+
+# notes
+notes/
 
 # Python
 __pycache__/

@@ -62,14 +62,13 @@ PERIODS = [
     ("Aug-Sep 12", "2024-08-01", "2024-09-12"),
 ]
 
-# Okabe-Ito inspired, colorblind-safe pair for source comparison
-CLR_PM = "#0072B2"
-CLR_538 = "#D55E00"
-# Political colors for EV split chart
+
+CLR_PM = "#004276"
+CLR_538 = "#D95F02"
 CLR_TRUMP = "#C53030"
 CLR_HARRIS = "#2B6CB0"
 
-DPI = 600
+DPI = 300
 
 
 def _configure_plot_style():
@@ -77,6 +76,7 @@ def _configure_plot_style():
     plt.style.use("seaborn-v0_8-whitegrid")
     plt.rcParams.update(
         {
+            "font.family": "Inter",
             "figure.dpi": DPI,
             "axes.titlesize": 13,
             "axes.labelsize": 11,
