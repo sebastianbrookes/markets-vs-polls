@@ -21,3 +21,6 @@ __pycache__/
 data/raw/**/*.csv
 data/raw/**/*.xlsx
 !data/raw/events/events.csv
+
+# local deliverables
+deliverables/
