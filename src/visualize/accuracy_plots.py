@@ -425,8 +425,6 @@ def plot_head_to_head(metrics):
         width,
         label="FiveThirtyEight",
         color=CLR_538,
-        hatch="//",
-        edgecolor="#B04E00",
     )
 
     _annotate_bars(ax, bars_pm, color=CLR_PM, bold=True)
@@ -436,7 +434,7 @@ def plot_head_to_head(metrics):
     ax.set_ylim(0, 105)
     ax.set_ylabel("States Predicted Correctly (%)")
     ax.set_title(
-        f"Polymarket Led FiveThirtyEight by {lead_pts:.0f} Points on Sept 12",
+        "State-by-State Prediction Accuracy",
         fontweight="bold",
     )
     ax.set_xticks(x)
@@ -473,8 +471,6 @@ def plot_polymarket_trajectory(metrics):
         label="Swing States",
         color=CLR_PM,
         alpha=0.55,
-        hatch="//",
-        edgecolor=CLR_PM,
     )
 
     _annotate_bars(ax, bars_all, color=CLR_PM, bold=True)
