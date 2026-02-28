@@ -2,8 +2,13 @@
 Visualize event response analysis: how Polymarket and FiveThirtyEight
 reacted to major 2024 campaign events.
 
-NYT-Style Refactor: Focuses on high data-ink ratio, direct labeling,
-left-aligned typographic headers, and sophisticated, muted color palettes.
+Generates three plots:
+    1. Event timeline (swing around each campaign event)
+    2. Reaction scoreboard (head-to-head event response comparison)
+    3. Indexed event study (dropout response, normalized windows)
+
+Run from project root:
+    python -m src.visualize.event_plots
 """
 
 import sys
@@ -14,31 +19,31 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-# --- Path Resolution ---
+
 _project_root = str(Path(__file__).resolve().parents[2])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-# Replace these imports with your actual module paths as needed
 from src.analysis.events.event_response import (
     EVENTS,
     build_reaction_summary,
     compute_538_swing_timeseries,
     compute_raw_indexed_window,
     compute_swing_average,
-    detect_price_in_day,
     load_data,
 )
 
 # ---------------------------------------------------------------------------
-# Design System (The "NYT" Theme)
+# Design System
 # ---------------------------------------------------------------------------
 @dataclass
 class Theme:
-    """Centralized design tokens for NYT-style graphics."""
+    """Centralized design tokens."""
     PM_COLOR: str = "#004276"      # Deep Navy
     F38_COLOR: str = "#D95F02"     # Burnt Orange
     CORRECT_COLOR: str = "#4A7c59" # Muted Green
@@ -47,14 +52,14 @@ class Theme:
     TEXT_MAIN: str = "#333333"     # Off-Black
     TEXT_MUTED: str = "#777777"    # Medium Gray
     EVENT_BAND: str = "#F0F0F0"    # Very faint gray for events
-    FONT_FAMILY: str = "sans-serif"
-    DPI: int = 600                 # Print/Web quality
+    FONT_FAMILY: str = "Inter"
+    DPI: int = 300                 
 
 FIGURES_DIR = Path(_project_root) / "figures" / "events"
 
 
-def apply_nyt_style():
-    """Applies a clean, journalistic matplotlib style."""
+def apply_style():
+    """Applies a clean matplotlib style."""
     plt.rcParams.update({
         "figure.dpi": Theme.DPI,
         "figure.facecolor": "white",
@@ -81,7 +86,7 @@ def apply_nyt_style():
     })
 
 
-def format_nyt_header(fig: plt.Figure, title: str, subtitle: str):
+def format_header(fig: Figure, title: str, subtitle: str):
     """Adds a left-aligned headline and subheadline to the figure."""
     fig.text(0.05, 0.98, title, fontsize=16, fontweight="bold", ha="left", va="top")
     fig.text(0.05, 0.93, subtitle, fontsize=11, color=Theme.TEXT_MUTED, ha="left", va="top")
@@ -90,7 +95,7 @@ def format_nyt_header(fig: plt.Figure, title: str, subtitle: str):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _align_dual_axes(ax_left: plt.Axes, ax_right: plt.Axes):
+def _align_dual_axes(ax_left: Axes, ax_right: Axes):
     """Mathematically aligns the y=0 line on two overlapping axes."""
     l_min, l_max = ax_left.get_ylim()
     r_min, r_max = ax_right.get_ylim()
@@ -113,53 +118,53 @@ def _align_dual_axes(ax_left: plt.Axes, ax_right: plt.Axes):
 # ---------------------------------------------------------------------------
 # Plot 1: Event Timeline
 # ---------------------------------------------------------------------------
-def plot_event_timeline(pm_swing: pd.Series, p538_swing: pd.Series):
+def plot_event_timeline(pm_swing, p538_swing):
     """Line chart tracking the campaign, using direct labeling instead of legends."""
     start_cutoff = pd.Timestamp("2024-06-01")
     end_cutoff = pd.Timestamp("2024-09-12")
     
-    # Filter data to start in June
-    pm_swing = pm_swing[(pm_swing.index >= start_cutoff) & (pm_swing.index <= end_cutoff)]
-    p538_swing = p538_swing[(p538_swing.index >= start_cutoff) & (p538_swing.index <= end_cutoff)]
+    # Filter data to the June–September window
+    pm_filtered = pm_swing[(pm_swing.index >= start_cutoff) & (pm_swing.index <= end_cutoff)]
+    p538_filtered = p538_swing[(p538_swing.index >= start_cutoff) & (p538_swing.index <= end_cutoff)]
 
     # Keep the wide figure to stretch the narrower time window, creating a granular look
     fig, ax1 = plt.subplots(figsize=(15, 6.5))
-    
+
     # Increased 'top' from 0.72 to 0.82 to decrease padding below title/subtitle
-    fig.subplots_adjust(top=0.78, right=0.82) 
+    fig.subplots_adjust(top=0.78, right=0.82)
 
     ax1.grid(axis="y")
-    
+
     ax2 = ax1.twinx()
-    ax2.plot(p538_swing.index, p538_swing.values, color=Theme.F38_COLOR, 
+    ax2.plot(p538_filtered.index, p538_filtered.values, color=Theme.F38_COLOR,
              linewidth=2, label="FiveThirtyEight", zorder=3)
     ax2.spines["top"].set_visible(False)
     ax2.spines["right"].set_visible(False)
 
-    ax1.plot(pm_swing.index, pm_swing.values, color=Theme.PM_COLOR, 
+    ax1.plot(pm_filtered.index, pm_filtered.values, color=Theme.PM_COLOR,
              linewidth=2.5, label="Polymarket", zorder=4)
 
     _align_dual_axes(ax1, ax2)
 
     ax1.axhline(0, color=Theme.TEXT_MAIN, linewidth=1.2, zorder=2)
-    
-    start_date = pm_swing.index.min()
-    ax1.annotate("Trump leads", xy=(start_date, 0), xytext=(10, 8), 
+
+    start_date = pm_filtered.index.min()
+    ax1.annotate("Trump leads", xy=(start_date, 0), xytext=(10, 8),
                  textcoords="offset points", color=Theme.TEXT_MUTED, fontsize=9, va="bottom")
-    ax1.annotate("Biden / Harris leads", xy=(start_date, 0), xytext=(10, -8), 
+    ax1.annotate("Biden / Harris leads", xy=(start_date, 0), xytext=(10, -8),
                  textcoords="offset points", color=Theme.TEXT_MUTED, fontsize=9, va="top")
 
-    last_date = pm_swing.index.max()
-    
-    ax1.annotate("Polymarket\n(Win Prob.)", 
-                 xy=(last_date, pm_swing.iloc[-1]), xytext=(70, 12), textcoords="offset points",
+    last_date = pm_filtered.index.max()
+
+    ax1.annotate("Polymarket\n(Win Prob.)",
+                 xy=(last_date, pm_filtered.iloc[-1]), xytext=(70, 12), textcoords="offset points",
                  color=Theme.PM_COLOR, fontweight="bold", va="center", annotation_clip=False)
-    
-    ax2.annotate("FiveThirtyEight\n(Vote Share %)", 
-                 xy=(last_date, p538_swing.iloc[-1]), xytext=(70, -12), textcoords="offset points",
+
+    ax2.annotate("FiveThirtyEight\n(Vote Share %)",
+                 xy=(last_date, p538_filtered.iloc[-1]), xytext=(70, -12), textcoords="offset points",
                  color=Theme.F38_COLOR, fontweight="bold", va="center", annotation_clip=False)
 
-    y_min, y_max = ax1.get_ylim()
+    _, y_max = ax1.get_ylim()
 
     for event in EVENTS:
         edate = pd.Timestamp(event["date"])
@@ -195,7 +200,7 @@ def plot_event_timeline(pm_swing: pd.Series, p538_swing: pd.Series):
     ax1.xaxis.set_major_locator(mdates.MonthLocator())
     ax1.xaxis.set_major_formatter(mdates.DateFormatter("%b."))
     
-    format_nyt_header(
+    format_header(
         fig,
         "How Prediction Markets and Polls Tracked the Campaign",
         "Swing-state average Trump lead, showing Polymarket probability vs. FiveThirtyEight vote share."
@@ -208,7 +213,7 @@ def plot_event_timeline(pm_swing: pd.Series, p538_swing: pd.Series):
 # ---------------------------------------------------------------------------
 # Plot 2: Reaction Scoreboard
 # ---------------------------------------------------------------------------
-def plot_reaction_scoreboard(summary: pd.DataFrame):
+def plot_reaction_scoreboard(summary):
     """Horizontal bar chart indicating directional movement correctly/incorrectly."""
     event_names = [e["name"] for e in EVENTS]
     y = np.arange(len(event_names))
@@ -221,10 +226,10 @@ def plot_reaction_scoreboard(summary: pd.DataFrame):
     ax.axvline(0, color=Theme.TEXT_MAIN, linewidth=1, zorder=2)
 
     for i, event_name in enumerate(event_names):
-        for j, (source, color, offset) in enumerate([
+        for source, color, offset in [
             ("Polymarket", Theme.PM_COLOR, -bar_h / 2),
             ("538", Theme.F38_COLOR, bar_h / 2),
-        ]):
+        ]:
             row = summary[(summary["event"] == event_name) & (summary["source"] == source)]
             if row.empty or np.isnan(row.iloc[0]["shift_z"]):
                 continue
@@ -250,7 +255,7 @@ def plot_reaction_scoreboard(summary: pd.DataFrame):
 
     # Axis Formatting
     ax.set_yticks(y)
-    ax.set_yticklabels(event_names, fontweight="bold")
+    ax.set_yticklabels(event_names)
     ax.invert_yaxis()
     ax.set_xlabel("Reaction Intensity (z-score, normalized to daily volatility)", color=Theme.TEXT_MUTED)
     ax.grid(axis="x", linestyle="--", alpha=0.5)
@@ -266,7 +271,7 @@ def plot_reaction_scoreboard(summary: pd.DataFrame):
     ax.legend(handles=legend_elements, loc="lower right", bbox_to_anchor=(1.0, 1.02),
               ncol=2, fontsize=9, frameon=False)
 
-    format_nyt_header(
+    format_header(
         fig,
         "Event Reaction Scoreboard",
         "Which source reacted more intensely, and did they move in the correct direction?"
@@ -279,7 +284,7 @@ def plot_reaction_scoreboard(summary: pd.DataFrame):
 # ---------------------------------------------------------------------------
 # Plot 3: Indexed Event Study (Hero Panel)
 # ---------------------------------------------------------------------------
-def plot_indexed_event_study(pm_swing: pd.Series, p538_swing: pd.Series):
+def plot_indexed_event_study(pm_swing, p538_swing):
     """Detailed view of a single event (Biden dropping out) showing the lag."""
     hero_event = next(e for e in EVENTS if e["name"] == "Biden Drops Out")
     edate = hero_event["date"]
@@ -304,6 +309,12 @@ def plot_indexed_event_study(pm_swing: pd.Series, p538_swing: pd.Series):
     ax1.axvline(0, color=Theme.TEXT_MAIN, linewidth=1, linestyle=":", zorder=2)
     ax1.axhline(0, color=Theme.TEXT_MAIN, linewidth=1, zorder=2)
     ax1.text(0, ax1.get_ylim()[1]*0.95, " Biden withdraws", color=Theme.TEXT_MAIN, fontsize=9)
+
+    start_x = pm_win.index.min()
+    ax1.annotate("Trump leads", xy=(start_x, 0), xytext=(10, 8), 
+                 textcoords="offset points", color=Theme.TEXT_MUTED, fontsize=9, va="bottom")
+    ax1.annotate("Harris leads", xy=(start_x, 0), xytext=(10, -8), 
+                 textcoords="offset points", color=Theme.TEXT_MUTED, fontsize=9, va="top")
 
     # ---------------------------------------------------------
     # Fix 1: Use an in-graph key at the bottom left instead of right-side labels
@@ -352,7 +363,7 @@ def plot_indexed_event_study(pm_swing: pd.Series, p538_swing: pd.Series):
 
     ax1.set_xlabel("Days from Event", color=Theme.TEXT_MUTED)
 
-    format_nyt_header(
+    format_header(
         fig,
         "Market Traders Spotted the Harris Surge a Week Before Polls",
         "Change in probability and vote share zeroed to the day before Biden dropped out."
@@ -366,7 +377,7 @@ def plot_indexed_event_study(pm_swing: pd.Series, p538_swing: pd.Series):
 # ---------------------------------------------------------------------------
 def main():
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-    apply_nyt_style()
+    apply_style()
 
     print("Loading data...")
     pm, p538 = load_data()
@@ -378,7 +389,7 @@ def main():
     print("Building reaction summary...")
     summary = build_reaction_summary(pm, p538)
 
-    print("Generating NYT-style plots...")
+    print("Generating plots...")
     plot_event_timeline(pm_swing, p538_swing)
     print("  Saved event_timeline.png")
     

@@ -3,6 +3,9 @@ CLAUDE.md
 /.agents/
 .claude/
 
+# notes
+notes/
+
 # Python
 __pycache__/
 *.pyc
