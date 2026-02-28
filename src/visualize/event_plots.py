@@ -198,12 +198,9 @@ def plot_event_timeline(pm_swing, p538_swing):
     _align_dual_axes(ax1, ax2)
     ax1.axhline(0, color=THEME.TEXT_MAIN, linewidth=1.2, zorder=2)
 
-    # --- UPDATED: Stacked top-right legend aligned with header ---
     lines = line1 + line2
     labels = [l.get_label() for l in lines]
     
-    # loc="upper right" and anchor y=1.32 pushes it up into the margin space 
-    # created by subplots_adjust(top=0.78), aligning it with the title.
     leg = ax1.legend(
         lines, labels, 
         loc="upper right", 
