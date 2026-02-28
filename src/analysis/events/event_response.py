@@ -62,6 +62,7 @@ EVENTS = [
 ]
 
 OVERLAP_CUTOFF = "2024-09-12"
+MIN_POST_COVERAGE = 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +145,8 @@ def compute_538_swing_timeseries(p538):
 # ---------------------------------------------------------------------------
 # Event reaction computation
 # ---------------------------------------------------------------------------
-def compute_event_reaction(swing_avg, event_date, pre_days=3, post_days=7):
+def compute_event_reaction(swing_avg, event_date, pre_days=3, post_days=7,
+                           min_post_coverage=MIN_POST_COVERAGE):
     """Compute baseline, immediate, and settled reaction around an event.
 
     Parameters
@@ -161,7 +163,7 @@ def compute_event_reaction(swing_avg, event_date, pre_days=3, post_days=7):
     Returns
     -------
     dict with keys: baseline, immediate, settled, shift, has_data,
-                    n_pre, n_post, data_gap_days
+                    n_pre, n_post, data_gap_days, post_coverage
     """
     event_date = pd.Timestamp(event_date)
     pre_start = event_date - pd.Timedelta(days=pre_days)
@@ -186,21 +188,21 @@ def compute_event_reaction(swing_avg, event_date, pre_days=3, post_days=7):
                                        np.isnan(baseline)) else np.nan
 
     # Detect data gaps: days in post window with no data
-    if len(post_vals) > 0:
-        expected_days = (post_end - post_start).days + 1
-        data_gap_days = expected_days - len(post_vals)
-    else:
-        data_gap_days = post_days
+    expected_days = (post_end - post_start).days + 1
+    data_gap_days = expected_days - len(post_vals)
+    post_coverage = (len(post_vals) / expected_days) if expected_days > 0 else 0.0
+    has_data = len(pre_vals) > 0 and post_coverage >= min_post_coverage
 
     return {
         "baseline": baseline,
         "immediate": immediate,
         "settled": settled,
         "shift": shift,
-        "has_data": len(pre_vals) > 0 and len(post_vals) > 0,
+        "has_data": has_data,
         "n_pre": len(pre_vals),
         "n_post": len(post_vals),
         "data_gap_days": data_gap_days,
+        "post_coverage": post_coverage,
     }
 
 
@@ -359,6 +361,7 @@ def build_reaction_summary(pm, p538):
                 "n_pre": reaction["n_pre"],
                 "n_post": reaction["n_post"],
                 "data_gap_days": reaction["data_gap_days"],
+                "post_coverage": reaction["post_coverage"],
             })
 
     df = pd.DataFrame(rows)
@@ -405,7 +408,8 @@ def main():
 
             if not row["has_data"]:
                 print(f"  {source:12s}: INSUFFICIENT DATA "
-                      f"(pre={row['n_pre']}, post={row['n_post']})")
+                      f"(pre={row['n_pre']}, post={row['n_post']}, "
+                      f"post_coverage={row['post_coverage']:.0%})")
                 continue
 
             shift_str = f"{row['shift']:+.4f}" if not np.isnan(
@@ -426,10 +430,12 @@ def main():
     print("=" * 65)
     for source in ["Polymarket", "538"]:
         src_rows = summary[summary["source"] == source]
-        n_correct = (src_rows["direction_match"] == "correct").sum()
+        eligible = src_rows[src_rows["has_data"]]
+        n_correct = (eligible["direction_match"] == "correct").sum()
+        n_eligible = len(eligible)
         n_with_data = src_rows["has_data"].sum()
         total_gap = src_rows["data_gap_days"].sum()
-        print(f"  {source:12s}: {n_correct}/{len(src_rows)} correct direction  "
+        print(f"  {source:12s}: {n_correct}/{n_eligible} correct direction  "
               f"| {int(n_with_data)}/{len(src_rows)} events with data  "
               f"| {int(total_gap)} total gap days")
 
