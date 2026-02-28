@@ -398,7 +398,7 @@ def plot_timeseries_crossover(ts):
     ax.legend(loc="lower left", frameon=False, fontsize=11)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "accuracy_timeseries.png"
+    path = FIGURES_DIR / "timeseries.png"
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved {path.name}")
@@ -425,8 +425,6 @@ def plot_head_to_head(metrics):
         width,
         label="FiveThirtyEight",
         color=CLR_538,
-        hatch="//",
-        edgecolor="#B04E00",
     )
 
     _annotate_bars(ax, bars_pm, color=CLR_PM, bold=True)
@@ -436,7 +434,7 @@ def plot_head_to_head(metrics):
     ax.set_ylim(0, 105)
     ax.set_ylabel("States Predicted Correctly (%)")
     ax.set_title(
-        f"Polymarket Led FiveThirtyEight by {lead_pts:.0f} Points on Sept 12",
+        "State-by-State Prediction Accuracy",
         fontweight="bold",
     )
     ax.set_xticks(x)
@@ -445,7 +443,7 @@ def plot_head_to_head(metrics):
     _style_axis(ax)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "accuracy_head_to_head.png"
+    path = FIGURES_DIR / "head-to-head.png"
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved {path.name}")
@@ -473,8 +471,6 @@ def plot_polymarket_trajectory(metrics):
         label="Swing States",
         color=CLR_PM,
         alpha=0.55,
-        hatch="//",
-        edgecolor=CLR_PM,
     )
 
     _annotate_bars(ax, bars_all, color=CLR_PM, bold=True)
@@ -493,7 +489,7 @@ def plot_polymarket_trajectory(metrics):
     _style_axis(ax)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "accuracy_pm_trajectory.png"
+    path = FIGURES_DIR / "pm-trajectory.png"
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved {path.name}")
@@ -552,7 +548,7 @@ def plot_ev_comparison(metrics):
     _style_axis(ax)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "accuracy_ev_comparison.png"
+    path = FIGURES_DIR / "ev-comparison.png"
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved {path.name}")

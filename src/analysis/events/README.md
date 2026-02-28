@@ -39,8 +39,9 @@ Both sources had full data coverage for all five events, though 538 had a 5-day 
 ## Outputs
 
 - `result.txt` — full printed scorecard with numeric details
-- `figures/events/event_timeline.png` — time-series plot with event bands
-- `figures/events/event_scoreboard.png` — bar chart comparing reaction intensity
+- `figures/events/timeline.png` — time-series plot with event bands
+- `figures/events/scoreboard.png` — bar chart comparing reaction intensity
+- `figures/events/dropout-response.png` — before/after comparison for the dropout event
 
 ## How to Run
 
