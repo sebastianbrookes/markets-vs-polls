@@ -119,6 +119,20 @@ def _predict_winner_538(df):
     return df
 
 
+def _pm_snapshot(pm, as_of, states=None):
+    snapshot = _predict_winner_pm(pm[pm["date"] == pd.Timestamp(as_of)])
+    if states is not None:
+        snapshot = snapshot[snapshot["state"].isin(states)]
+    return snapshot
+
+
+def _p538_snapshot(p538, as_of, states=None):
+    snapshot = _predict_winner_538(_latest_per_state(p538, as_of))
+    if states is not None:
+        snapshot = snapshot[snapshot["state"].isin(states)]
+    return snapshot
+
+
 def _compute_accuracy(snapshot, fec_winners, states=None):
     """Return dict with winner-call accuracy for a prediction snapshot."""
     subset = snapshot if states is None else snapshot[snapshot["state"].isin(states)]
@@ -225,11 +239,8 @@ def build_head_to_head_metrics(pm, p538, fec):
     """Compute Sept 12 grouped-bar values from source data."""
     fec_winners = fec.set_index("state")["winner"]
 
-    pm_snap = _predict_winner_pm(pm[pm["date"] == pd.Timestamp(OVERLAP_CUTOFF)])
-    pm_snap = pm_snap[pm_snap["state"].isin(OVERLAP_STATES)]
-
-    p538_snap = _predict_winner_538(_latest_per_state(p538, OVERLAP_CUTOFF))
-    p538_snap = p538_snap[p538_snap["state"].isin(OVERLAP_STATES)]
+    pm_snap = _pm_snapshot(pm, OVERLAP_CUTOFF, OVERLAP_STATES)
+    p538_snap = _p538_snapshot(p538, OVERLAP_CUTOFF, OVERLAP_STATES)
 
     groups = [
         ("All 13 States", OVERLAP_STATES),
@@ -261,11 +272,14 @@ def build_polymarket_trajectory_metrics(pm, fec):
 
     rows = []
     for label, as_of_date, state_subset in snapshots:
-        snapshot = _predict_winner_pm(pm[pm["date"] == pd.Timestamp(as_of_date)])
-        if state_subset is None:
-            state_subset = sorted(snapshot["state"].unique())
+        snapshot = _pm_snapshot(pm, as_of_date)
+        states = (
+            sorted(snapshot["state"].unique())
+            if state_subset is None
+            else state_subset
+        )
 
-        all_stats = _compute_accuracy(snapshot, fec_winners, state_subset)
+        all_stats = _compute_accuracy(snapshot, fec_winners, states)
         swing_states = sorted(set(SWING_STATES) & set(snapshot["state"]))
         swing_stats = _compute_accuracy(snapshot, fec_winners, swing_states)
 
@@ -282,11 +296,8 @@ def build_polymarket_trajectory_metrics(pm, fec):
 
 def build_ev_comparison_metrics(pm, p538, fec):
     """Compute EV share bars from prediction snapshots."""
-    pm_snap = _predict_winner_pm(pm[pm["date"] == pd.Timestamp(OVERLAP_CUTOFF)])
-    pm_snap = pm_snap[pm_snap["state"].isin(OVERLAP_STATES)]
-
-    p538_snap = _predict_winner_538(_latest_per_state(p538, OVERLAP_CUTOFF))
-    p538_snap = p538_snap[p538_snap["state"].isin(OVERLAP_STATES)]
+    pm_snap = _pm_snapshot(pm, OVERLAP_CUTOFF, OVERLAP_STATES)
+    p538_snap = _p538_snapshot(p538, OVERLAP_CUTOFF, OVERLAP_STATES)
 
     actual = fec[["state", "winner"]].rename(columns={"winner": "predicted_winner"})
 
@@ -321,6 +332,13 @@ def _annotate_bars(ax, bars, color, y_offset=1.5, bold=False):
             color=color,
             fontweight="bold" if bold else "normal",
         )
+
+
+def _save_figure(fig, filename):
+    path = FIGURES_DIR / filename
+    fig.savefig(path, dpi=DPI, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved {path.name}")
 
 
 # ---------------------------------------------------------------------------
@@ -398,10 +416,7 @@ def plot_timeseries_crossover(ts):
     ax.legend(loc="lower left", frameon=False, fontsize=11)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "timeseries.png"
-    fig.savefig(path, dpi=DPI, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  Saved {path.name}")
+    _save_figure(fig, "timeseries.png")
 
 
 # ---------------------------------------------------------------------------
@@ -430,7 +445,6 @@ def plot_head_to_head(metrics):
     _annotate_bars(ax, bars_pm, color=CLR_PM, bold=True)
     _annotate_bars(ax, bars_538, color=CLR_538, bold=True)
 
-    lead_pts = float(pm_vals[0] - p538_vals[0]) if len(pm_vals) else 0.0
     ax.set_ylim(0, 105)
     ax.set_ylabel("States Predicted Correctly (%)")
     ax.set_title(
@@ -443,10 +457,7 @@ def plot_head_to_head(metrics):
     _style_axis(ax)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "head-to-head.png"
-    fig.savefig(path, dpi=DPI, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  Saved {path.name}")
+    _save_figure(fig, "head-to-head.png")
 
 
 # ---------------------------------------------------------------------------
@@ -489,10 +500,7 @@ def plot_polymarket_trajectory(metrics):
     _style_axis(ax)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "pm-trajectory.png"
-    fig.savefig(path, dpi=DPI, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  Saved {path.name}")
+    _save_figure(fig, "pm-trajectory.png")
 
 
 # ---------------------------------------------------------------------------
@@ -548,10 +556,7 @@ def plot_ev_comparison(metrics):
     _style_axis(ax)
 
     fig.tight_layout()
-    path = FIGURES_DIR / "ev-comparison.png"
-    fig.savefig(path, dpi=DPI, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  Saved {path.name}")
+    _save_figure(fig, "ev-comparison.png")
 
 
 # ---------------------------------------------------------------------------
