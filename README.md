@@ -48,8 +48,7 @@ The analysis uses three approaches:
 │   ├── accuracy/                   # Accuracy-related figures
 │   └── events/                     # Event-response figures
 │
-├── notebooks/                      # Exploratory analysis
-├── deliverables/                   # Submitted reports
+├── notebooks/                      # Exploratory analysis (WIP)
 └── requirements.txt
 ```
 
