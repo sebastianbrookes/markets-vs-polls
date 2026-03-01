@@ -1,4 +1,4 @@
-# Markets vs. Polls: Forecasting the 2024 U.S. Presidential Election
+# Markets vs. Polls: <br /> Forecasting the 2024 U.S. Presidential Election
 
 **Do prediction markets or traditional polls better forecast election outcomes?**
 
