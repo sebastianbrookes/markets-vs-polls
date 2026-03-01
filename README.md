@@ -1,4 +1,4 @@
-# Markets vs. Polls: Forecasting the 2024 U.S. Presidential Election
+# Markets vs. Polls: <br /> Forecasting the 2024 U.S. Presidential Election
 
 **Do prediction markets or traditional polls better forecast election outcomes?**
 
@@ -48,8 +48,7 @@ The analysis uses three approaches:
 │   ├── accuracy/                   # Accuracy-related figures
 │   └── events/                     # Event-response figures
 │
-├── notebooks/                      # Exploratory analysis
-├── deliverables/                   # Submitted reports
+├── notebooks/                      # Exploratory analysis (WIP)
 └── requirements.txt
 ```
 
