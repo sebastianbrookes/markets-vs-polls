@@ -169,7 +169,6 @@ def plot_event_timeline(pm_swing, p538_swing):
 
     fig, ax1 = plt.subplots(figsize=(14, 6.5))
     fig.subplots_adjust(top=0.78, right=0.82)
-    ax1.grid(axis="y")
 
     ax2 = ax1.twinx()
     
@@ -320,6 +319,8 @@ def plot_reaction_scoreboard(summary):
     ax.set_yticklabels(event_names)
     ax.invert_yaxis()
     ax.set_xlabel("Reaction intensity (z-score, normalized to daily volatility)")
+    ax.spines["bottom"].set_visible(False)
+    ax.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
     ax.grid(False)
 
     legend_elements = [
@@ -369,19 +370,42 @@ def plot_indexed_event_study(pm_swing, p538_swing):
     ax2.spines["right"].set_visible(False)
 
     _align_dual_axes(ax1, ax2)
+    ax1.tick_params(axis="y", colors=THEME.PM_COLOR)
+    ax2.tick_params(axis="y", colors=THEME.F38_COLOR)
     ax1.axvline(0, color=THEME.TEXT_MAIN, linewidth=1, linestyle=":", zorder=2)
     ax1.axhline(0, color=THEME.TEXT_MAIN, linewidth=1, zorder=2)
-    ax1.text(0, ax1.get_ylim()[1] * 0.95, " Biden withdraws", color=THEME.TEXT_MAIN, fontsize=9)
+    ax1.text(
+        0,       # x-coordinate in data space (Day 0)
+        0.04,    # y-coordinate in axes space (4% up from the bottom spine)
+        "Biden withdraws", 
+        color=THEME.TEXT_MAIN, 
+        fontsize=9,
+        ha="center", 
+        va="bottom",
+        transform=ax1.get_xaxis_transform(), # Blends data x-coords and fractional y-coords
+        bbox=dict(facecolor="white", edgecolor="none", pad=4), # The invisible mask
+        zorder=3 # Ensures the text sits above the axvline (which is zorder=2)
+    )
 
-    ax1.legend(
-        handles=[
-            Line2D([0], [0], color=THEME.PM_COLOR, lw=3, label="Polymarket (percentage points)"),
-            Line2D([0], [0], color=THEME.F38_COLOR, lw=3, label="FiveThirtyEight (vote share points)"),
-        ],
-        loc="lower left",
-        frameon=False,
-        fontsize=10,
-        borderaxespad=1.5,
+    # Left Axis Title (Polymarket)
+    ax1.set_ylabel(
+        "Polymarket\n(percentage points)", 
+        color=THEME.PM_COLOR, 
+        fontsize=11, 
+        fontweight="bold",
+        linespacing=1.4,
+        labelpad=10
+    )
+
+    # Right Axis Title (FiveThirtyEight)
+    ax2.set_ylabel(
+        "FiveThirtyEight\n(vote share points)", 
+        color=THEME.F38_COLOR, 
+        fontsize=11, 
+        fontweight="bold",
+        linespacing=1.4,
+        rotation=270,  # Flips text so the baseline points towards the axis
+        labelpad=40    # Extra padding to clear the tick labels
     )
 
     pm_lag = _steepest_drop_day(pm_window)
