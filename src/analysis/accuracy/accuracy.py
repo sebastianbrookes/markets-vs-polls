@@ -70,7 +70,10 @@ def _latest_per_state(p538, as_of):
 # ---------------------------------------------------------------------------
 
 def _predict_winner_pm(df):
-    """Add predicted_winner column from Polymarket probabilities."""
+    """Add predicted_winner column from Polymarket probabilities.
+
+    Ties at exactly 0.50 are treated as Harris calls.
+    """
     df = df.copy()
     df["predicted_winner"] = np.where(
         df["trump_prob"] > 0.5, "Trump", "Harris"

@@ -162,7 +162,15 @@ def _add_event_bands(ax, y_anchor, start, end):
         )
 
 
-def plot_event_timeline(pm_swing, p538_swing):
+def _save_or_show(fig, filename, show=False):
+    if show:
+        plt.show()
+    else:
+        fig.savefig(FIGURES_DIR / filename, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_event_timeline(pm_swing, p538_swing, show=False):
     """Plot campaign movement in Polymarket and FiveThirtyEight series."""
     pm_filtered = _filter_window(pm_swing, TIMELINE_START, TIMELINE_END)
     p538_filtered = _filter_window(p538_swing, TIMELINE_START, TIMELINE_END)
@@ -252,11 +260,10 @@ def plot_event_timeline(pm_swing, p538_swing):
         "How Prediction Markets and Polls Tracked the Campaign",
         "Swing-state average Trump lead, showing Polymarket probability vs. FiveThirtyEight vote share.",
     )
-    fig.savefig(FIGURES_DIR / "timeline.png", bbox_inches="tight")
-    plt.close(fig)
+    _save_or_show(fig, "timeline.png", show=show)
 
 
-def plot_reaction_scoreboard(summary):
+def plot_reaction_scoreboard(summary, show=False):
     """Compare event reaction size and direction by source."""
     event_names = [event["name"] for event in EVENTS]
     y_pos = np.arange(len(event_names))
@@ -343,8 +350,7 @@ def plot_reaction_scoreboard(summary):
         "Event Reaction Scoreboard",
         "Which source reacted more intensely, and did they move in the expected direction?",
     )
-    fig.savefig(FIGURES_DIR / "scoreboard.png", bbox_inches="tight")
-    plt.close(fig)
+    _save_or_show(fig, "scoreboard.png", show=show)
 
 
 def _steepest_drop_day(series):
@@ -354,7 +360,7 @@ def _steepest_drop_day(series):
     return diffs.idxmin()
 
 
-def plot_indexed_event_study(pm_swing, p538_swing):
+def plot_indexed_event_study(pm_swing, p538_swing, show=False):
     """Plot response timing around Biden dropping out."""
     hero_date = next(event["date"] for event in EVENTS if event["name"] == "Biden Drops Out")
     pm_window = compute_raw_indexed_window(pm_swing, hero_date, pre_days=1, scale=100)
@@ -454,8 +460,7 @@ def plot_indexed_event_study(pm_swing, p538_swing):
         "Market Traders Spotted the Harris Surge Before Polling Caught Up",
         "Change in probability and vote share, indexed to the day before Biden dropped out.",
     )
-    fig.savefig(FIGURES_DIR / "dropout-response.png", bbox_inches="tight")
-    plt.close(fig)
+    _save_or_show(fig, "dropout-response.png", show=show)
 
 
 def main():
