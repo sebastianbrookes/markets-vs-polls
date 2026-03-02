@@ -108,7 +108,9 @@ def latest_per_state(p538, as_of):
 
 
 def predict_winner_pm(df):
+    """Add Polymarket winner calls (ties at 0.50 resolve to Harris)."""
     df = df.copy()
+    # Tie-breaking rule: a perfect toss-up is treated as a Harris call.
     df["predicted_winner"] = np.where(df["trump_prob"] > 0.5, "Trump", "Harris")
     return df
 
@@ -334,7 +336,12 @@ def annotate_bars(ax, bars, color, y_offset=1.5, bold=False):
         )
 
 
-def save_figure(fig, filename):
+def save_figure(fig, filename, show=False):
+    if show:
+        plt.show()
+        plt.close(fig)
+        return
+
     path = FIGURES_DIR / filename
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
@@ -345,7 +352,7 @@ def save_figure(fig, filename):
 # Plot 1: Time-Series Crossover
 # ---------------------------------------------------------------------------
 
-def plot_timeseries_crossover(ts):
+def plot_timeseries_crossover(ts, show=False):
     """Single-axis line chart with period shading and event marker."""
     fig, ax = plt.subplots(figsize=(14, 7))
 
@@ -416,14 +423,14 @@ def plot_timeseries_crossover(ts):
     ax.legend(loc="lower left", frameon=False, fontsize=11)
 
     fig.tight_layout()
-    save_figure(fig, "timeseries.png")
+    save_figure(fig, "timeseries.png", show=show)
 
 
 # ---------------------------------------------------------------------------
 # Plot 2: Head-to-Head Snapshot (Sept 12)
 # ---------------------------------------------------------------------------
 
-def plot_head_to_head(metrics):
+def plot_head_to_head(metrics, show=False):
     """Grouped bar chart: Polymarket vs 538 on Sept 12."""
     groups = metrics["group"].tolist()
     pm_vals = metrics["pm_pct"].to_numpy()
@@ -457,14 +464,14 @@ def plot_head_to_head(metrics):
     style_axis(ax)
 
     fig.tight_layout()
-    save_figure(fig, "head-to-head.png")
+    save_figure(fig, "head-to-head.png", show=show)
 
 
 # ---------------------------------------------------------------------------
 # Plot 3: Polymarket Trajectory (Sept 12 / Oct 6 / Nov 4)
 # ---------------------------------------------------------------------------
 
-def plot_polymarket_trajectory(metrics):
+def plot_polymarket_trajectory(metrics, show=False):
     """Grouped bars: Polymarket accuracy across three snapshots."""
     labels = metrics["label"].tolist()
     all_vals = metrics["all_pct"].to_numpy()
@@ -500,14 +507,14 @@ def plot_polymarket_trajectory(metrics):
     style_axis(ax)
 
     fig.tight_layout()
-    save_figure(fig, "pm-trajectory.png")
+    save_figure(fig, "pm-trajectory.png", show=show)
 
 
 # ---------------------------------------------------------------------------
 # Plot 4: Electoral Vote Comparison (normalized %)
 # ---------------------------------------------------------------------------
 
-def plot_ev_comparison(metrics):
+def plot_ev_comparison(metrics, show=False):
     """Stacked bar chart showing Trump/Harris EV share by scenario."""
     labels = metrics["label"].tolist()
     trump_pct = metrics["trump_pct"].to_numpy()
@@ -556,7 +563,7 @@ def plot_ev_comparison(metrics):
     style_axis(ax)
 
     fig.tight_layout()
-    save_figure(fig, "ev-comparison.png")
+    save_figure(fig, "ev-comparison.png", show=show)
 
 
 # ---------------------------------------------------------------------------
