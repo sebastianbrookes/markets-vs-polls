@@ -16,7 +16,7 @@ This project compares [Polymarket](https://polymarket.com/) (a prediction market
 | **Polymarket** | Market prices reflecting each candidate's win probability | State-level; daily, hourly, minutely | [Kaggle](https://www.kaggle.com/datasets/pbizil/polymarket-2024-us-election-state-data) |
 | **FiveThirtyEight** | Aggregated polling averages by candidate vote share | National + state-level | [GitHub](https://github.com/fivethirtyeight/data/blob/master/polls/2024-averages/presidential_general_averages_2024-09-12_uncorrected.csv) |
 | **FEC Official Results** | Certified vote counts by state (ground truth) | State-level | [fec.gov](https://www.fec.gov/documents/5645/2024presgeresults.xlsx) |
-| **Campaign Events** | Hand-curated timeline of major campaign moments | Event-level | [Ballotpedia](https://ballotpedia.org/Important_dates_in_the_2024_presidential_race) |
+| **Campaign Events** | Handmade timeline of major campaign moments | Event-level | [US News](https://www.usnews.com/news/national-news/articles/2024-10-30/the-moments-that-defined-the-2024-presidential-election) |
 
 ## Methods
 
