@@ -20,16 +20,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-_project_root = str(Path(__file__).resolve().parents[2])
-if _project_root not in sys.path:
-    sys.path.insert(0, _project_root)
+PROJECT_ROOT = str(Path(__file__).resolve().parents[2])
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from src.clean.utils import PROCESSED_DIR, SWING_STATES
 
 # ---------------------------------------------------------------------------
 # Constants & Colors
 # ---------------------------------------------------------------------------
-FIGURES_DIR = Path(_project_root) / "figures" / "accuracy"
+FIGURES_DIR = Path(PROJECT_ROOT) / "figures" / "accuracy"
 
 OVERLAP_CUTOFF = "2024-09-12"
 ELECTION_DATE = "2024-11-05"
@@ -64,7 +64,7 @@ DPI = 300
 
 
 def configure_plot_style():
-    """Apply a nimalist style baseline for all figures."""
+    """Apply a style baseline for all figures."""
     plt.style.use("default")
     plt.rcParams.update(
         {
@@ -213,8 +213,10 @@ def compute_ev_share(snapshot, fec, states=None):
 # ---------------------------------------------------------------------------
 
 def compute_daily_accuracy(pm, p538, fec):
-    """Compute daily accuracy percentages for both
-    sources over the overlap period."""
+    """
+    Compute daily accuracy percentages for both
+    sources over the overlap period.
+    """
     start = max(pm["date"].min(), p538["date"].min())
     end = pd.Timestamp(OVERLAP_CUTOFF)
     dates = pd.date_range(start, end, freq="D")
@@ -260,8 +262,10 @@ def compute_daily_accuracy(pm, p538, fec):
 
 
 def build_head_to_head_metrics(pm, p538, fec):
-    """Build per-group accuracy comparison between
-    Polymarket and 538 on Sept 12."""
+    """
+    Build per-group accuracy comparison between
+    Polymarket and 538 on Sept 12.
+    """
     fec_winners = fec.set_index("state")["winner"]
     pm_snap = pm_snapshot(pm, OVERLAP_CUTOFF, OVERLAP_STATES)
     p538_snap = p538_snapshot(p538, OVERLAP_CUTOFF, OVERLAP_STATES)
@@ -311,8 +315,10 @@ def build_polymarket_trajectory_metrics(pm, fec):
 
 
 def build_ev_comparison_metrics(pm, p538, fec):
-    """Build Electoral Vote share metrics for
-    Polymarket, 538, and actual results."""
+    """
+    Build Electoral Vote share metrics for
+    Polymarket, 538, and actual results.
+    """
     pm_snap = pm_snapshot(pm, OVERLAP_CUTOFF, OVERLAP_STATES)
     p538_snap = p538_snapshot(p538, OVERLAP_CUTOFF, OVERLAP_STATES)
     actual = fec[["state", "winner"]].rename(
