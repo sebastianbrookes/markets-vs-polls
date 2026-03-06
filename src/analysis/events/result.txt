@@ -35,13 +35,13 @@
   Harris widely seen as winning
 ─────────────────────────────────────────────────────────────────
   Polymarket  : baseline=0.0895  settled=0.0232  shift=-0.0663  [CORRECT]
-  538         : baseline=-0.7614  settled=-0.7096  shift=+0.0518  [WRONG]  (5 gap days)
+  538         : INSUFFICIENT DATA (pre=3, post=1, post_coverage=17%)
 
 =================================================================
   SCORECARD
 =================================================================
   Polymarket  : 4/5 correct direction  | 5/5 events with data  | 0 total gap days
-  538         : 3/5 correct direction  | 5/5 events with data  | 5 total gap days
+  538         : 3/4 correct direction  | 4/5 events with data  | 5 total gap days
 
 =================================================================
   Analysis complete.

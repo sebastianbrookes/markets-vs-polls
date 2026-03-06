@@ -1,5 +1,5 @@
 # Markets vs. Polls:
-# Forecasting the 2024 U.S. Presidential Election
+## Forecasting the 2024 U.S. Presidential Election
 
 This project compares **Polymarket** prediction-market prices with **FiveThirtyEight** polling averages to evaluate how each source forecast the 2024 U.S. presidential election. We study two questions: which source more accurately predicted certified election outcomes, and which source reacted more usefully to major campaign events. Across the full March 8 to September 12 overlap period, FiveThirtyEight was more accurate on average. But in the late campaign window, Polymarket adapted faster, performed better in the final September 12 head-to-head snapshot, and responded more accurately to the major events analyzed here.
 
@@ -9,7 +9,7 @@ This project compares **Polymarket** prediction-market prices with **FiveThirtyE
 - In the **7 swing states**, Polymarket went **5 for 7** and FiveThirtyEight went **2 for 7**.
 - Over the **full March 8 to September 12 overlap period**, average daily accuracy was **74.9% for Polymarket** and **90.2% for FiveThirtyEight**.
 - In the **late period from August 1 to September 12**, the relationship flipped: **Polymarket averaged 79.2% daily accuracy** and **FiveThirtyEight averaged 62.2%**.
-- In the event-response analysis, **Polymarket moved in the expected direction in 4 of 5 events**, while **FiveThirtyEight did so in 3 of 5**.
+- In the event-response analysis, **Polymarket moved in the expected direction in 4 of 5 events**, while **FiveThirtyEight did so in 3 of 4 measurable events**.
 
 ![State-by-state accuracy comparison](figures/accuracy/head-to-head.png)
 
@@ -85,12 +85,12 @@ python -m src.visualize.accuracy_plots
 python -m src.visualize.event_plots
 ```
 
-These commands regenerate the processed datasets, analysis text outputs, and saved figures used throughout the project.
+These commands regenerate the processed datasets, print the analysis summaries to the terminal, and recreate the saved figures used throughout the project.
 
 ## Outputs
 
-- Accuracy analysis text output: [`src/analysis/accuracy/result.txt`](src/analysis/accuracy/result.txt)
-- Event-response text output: [`src/analysis/events/result.txt`](src/analysis/events/result.txt)
+- Accuracy analysis text snapshot: [`src/analysis/accuracy/result.txt`](src/analysis/accuracy/result.txt)
+- Event-response text snapshot: [`src/analysis/events/result.txt`](src/analysis/events/result.txt)
 - Accuracy figures: [`figures/accuracy/`](figures/accuracy/)
 - Event figures: [`figures/events/`](figures/events/)
 
