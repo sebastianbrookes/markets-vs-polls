@@ -1,74 +1,101 @@
-# Markets vs. Polls: <br /> Forecasting the 2024 U.S. Presidential Election
+# Markets vs. Polls:
+# Forecasting the 2024 U.S. Presidential Election
 
-**Do prediction markets or traditional polls better forecast election outcomes?**
+This project compares **Polymarket** prediction-market prices with **FiveThirtyEight** polling averages to evaluate how each source forecast the 2024 U.S. presidential election. We study two questions: which source more accurately predicted certified election outcomes, and which source reacted more usefully to major campaign events. Across the full March 8 to September 12 overlap period, FiveThirtyEight was more accurate on average. But in the late campaign window, Polymarket adapted faster, performed better in the final September 12 head-to-head snapshot, and responded more accurately to the major events analyzed here.
 
-This project compares [Polymarket](https://polymarket.com/) (a prediction market) and [FiveThirtyEight](https://projects.fivethirtyeight.com/polls/president-general/2024/national/) (a polling aggregator) on two dimensions:
+## Main Findings
 
-1. **Accuracy** — Which source more accurately predicted actual state-level results, as certified by the FEC?
-2. **Responsiveness** — How did each source react to major campaign events (Biden's dropout, the assassination attempt, VP picks), and which told a more timely, accurate story?
+- On the final common date between both sources, **Polymarket correctly called 11 of 13 overlap states**, while **FiveThirtyEight correctly called 8 of 13**.
+- In the **7 swing states**, Polymarket went **5 for 7** and FiveThirtyEight went **2 for 7**.
+- Over the **full March 8 to September 12 overlap period**, average daily accuracy was **74.9% for Polymarket** and **90.2% for FiveThirtyEight**.
+- In the **late period from August 1 to September 12**, the relationship flipped: **Polymarket averaged 79.2% daily accuracy** and **FiveThirtyEight averaged 62.2%**.
+- In the event-response analysis, **Polymarket moved in the expected direction in 4 of 5 events**, while **FiveThirtyEight did so in 3 of 5**.
 
----
+![State-by-state accuracy comparison](figures/accuracy/head-to-head.png)
+
+*Figure 1. Snapshot accuracy on September 12, 2024, the final date available in both sources. On the last common date, Polymarket made more correct state calls overall and in the swing-state subset.*
+
+## Research Questions
+
+1. Which source more accurately predicted actual election outcomes?
+2. How did prediction markets and polls react to major campaign events, and which source told the more accurate story?
 
 ## Data Sources
 
-| Source | Description | Granularity | Link |
-|--------|-------------|-------------|------|
-| **Polymarket** | Market prices reflecting each candidate's win probability | State-level; daily, hourly, minutely | [Kaggle](https://www.kaggle.com/datasets/pbizil/polymarket-2024-us-election-state-data) |
-| **FiveThirtyEight** | Aggregated polling averages by candidate vote share | National + state-level | [GitHub](https://github.com/fivethirtyeight/data/blob/master/polls/2024-averages/presidential_general_averages_2024-09-12_uncorrected.csv) |
-| **FEC Official Results** | Certified vote counts by state (ground truth) | State-level | [fec.gov](https://www.fec.gov/documents/5645/2024presgeresults.xlsx) |
-| **Campaign Events** | Handmade timeline of major campaign moments | Event-level | [US News](https://www.usnews.com/news/national-news/articles/2024-10-30/the-moments-that-defined-the-2024-presidential-election) |
+The project combines market data, polling data, certified election results, and a hand-built event timeline.
 
-## Methods
+| Source | What it provides | Coverage used here | Link |
+|---|---|---|---|
+| **Polymarket** | State-level win probabilities | Daily, hourly, and minutely state series | [Kaggle](https://www.kaggle.com/datasets/pbizil/polymarket-2024-us-election-state-data) |
+| **FiveThirtyEight** | State polling averages by candidate vote share | State-level polling averages through **2024-09-12** | [GitHub](https://github.com/fivethirtyeight/data/blob/master/polls/2024-averages/presidential_general_averages_2024-09-12_uncorrected.csv) |
+| **FEC official results** | Certified state vote totals and winners | State-level ground truth | [fec.gov](https://www.fec.gov/documents/5645/2024presgeresults.xlsx) |
+| **Campaign events timeline** | Dates for major race-changing events | Five-event event-study input | [US News](https://www.usnews.com/news/national-news/articles/2024-10-30/the-moments-that-defined-the-2024-presidential-election) |
 
-The analysis uses three approaches:
+Because FiveThirtyEight coverage ends on **September 12, 2024**, that date defines the fair head-to-head comparison window. Polymarket continues beyond that date, so later Polymarket-only results are reported separately.
 
-- **Snapshot accuracy comparisons** — At fixed points before Election Day, compare each source's state-level predictions against certified FEC results and compute implied Electoral College totals.
-- **Time-series analysis** — Track daily swing-state averages from both sources to visualize convergence (or divergence) with actual outcomes over time.
-- **Indexed event windows** — Isolate windows around key campaign events to measure the size, direction, and speed of each source's reaction.
+## Method Overview
 
-## Repository Structure
+The analysis has four parts:
 
+- **Winner-call accuracy:** compare each source's predicted winner by state against certified FEC outcomes.
+- **Electoral-vote comparison:** map predicted state winners to electoral votes to compare implied Electoral College totals.
+- **Daily overlap-period accuracy:** measure how each source performed day by day from March 8 to September 12.
+- **Event-response analysis:** evaluate the direction and timing of market and poll reactions around five major campaign events.
+
+## Event Response
+
+The event analysis focuses on five major campaign moments: the Biden-Trump debate, the assassination attempt against Trump, Biden's withdrawal, Walz's VP selection, and the Harris-Trump debate. For each event, the project compares the change in swing-state average Trump lead before and after the event.
+
+![Timeline of campaign reactions](figures/events/timeline.png)
+
+*Figure 2. Event-response timeline for Polymarket and FiveThirtyEight across the major campaign shocks in the shared analysis window. The two series are plotted on separate y-axes, so this figure should be read as a comparison of direction and timing rather than a direct comparison of magnitudes.*
+
+## Repository Layout
+
+```text
+data/
+  processed/              cleaned datasets used in analysis
+  raw/                    source inputs
+src/
+  clean/                  raw-to-processed data cleaning scripts
+  analysis/accuracy/      outcome-accuracy analysis and output
+  analysis/events/        event-response analysis and output
+  visualize/              figure-generation scripts
+figures/
+  accuracy/               saved accuracy figures
+  events/                 saved event figures
+notebooks/                exploratory notebooks
 ```
-├── data/
-│   ├── raw/                        # Untouched source files
-│   │   ├── polymarket/             # State-level Kaggle CSVs
-│   │   ├── fivethirtyeight/        # Polling averages CSV
-│   │   ├── fec/                    # Official results (.xlsx)
-│   │   └── events/                 # Campaign events timeline
-│   └── processed/                  # Cleaned outputs from src/clean/
-│
-├── src/
-│   ├── clean/                      # Raw → processed transforms
-│   ├── analysis/
-│   │   ├── accuracy/               # Prediction accuracy comparisons
-│   │   └── events/                 # Event-response analysis
-│   └── visualize/                  # Plotting functions
-│
-├── figures/
-│   ├── accuracy/                   # Accuracy-related figures
-│   └── events/                     # Event-response figures
-│
-├── notebooks/                      # Exploratory analysis
-└── requirements.txt
-```
 
-## Setup & Reproduction
+## Reproducing the Analysis
+
+Install dependencies:
 
 ```bash
-git clone <repo-url>
-cd markets-vs-polls
 pip install -r requirements.txt
 ```
 
-Run the full pipeline in order:
+Run the full workflow from the project root:
 
 ```bash
-python -m src.clean.run_all              # 1. Clean raw data → data/processed/
-python -m src.analysis.accuracy          # 2. Run accuracy analysis
-python src/visualize/accuracy_plots.py   # 3. Generate accuracy figures
-python src/visualize/event_plots.py      # 4. Generate event-response figures
+python -m src.clean.run_all
+python -m src.analysis.accuracy
+python -m src.analysis.events.event_response
+python -m src.visualize.accuracy_plots
+python -m src.visualize.event_plots
 ```
 
-## Ethical Considerations
+These commands regenerate the processed datasets, analysis text outputs, and saved figures used throughout the project.
 
-Both data sources carry inherent biases worth noting. Polymarket's user base [skews male](https://www.similarweb.com/website/polymarket.com/#demographics) and presumably more financially secure, meaning market prices may not reflect the beliefs of the broader electorate. FiveThirtyEight's polling data underrepresents harder-to-reach groups like [younger voters](https://www.cbsnews.com/news/youth-vote-hard-to-turn-out-hard-to-poll/) and those with [lower institutional trust](https://publicwise.org/publication/the-problem-of-polling/). The campaign events timeline was hand-curated, introducing subjective judgment about which events "matter."
+## Outputs
+
+- Accuracy analysis text output: [`src/analysis/accuracy/result.txt`](src/analysis/accuracy/result.txt)
+- Event-response text output: [`src/analysis/events/result.txt`](src/analysis/events/result.txt)
+- Accuracy figures: [`figures/accuracy/`](figures/accuracy/)
+- Event figures: [`figures/events/`](figures/events/)
+
+## Limitations
+
+- **Prediction markets are not the electorate.** Polymarket reflects trader beliefs and incentives, which may differ from the voting population.
+- **Polling coverage is truncated.** FiveThirtyEight data ends on September 12, so direct head-to-head comparisons cannot extend into the final stretch of the campaign.
+- **The event list is curated.** The timeline of major events is hand-selected, which introduces judgment into what counts as a meaningful campaign shock.
