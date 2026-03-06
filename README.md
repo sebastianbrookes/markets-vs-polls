@@ -46,9 +46,9 @@ The analysis has four parts:
 
 The event analysis focuses on five major campaign moments: the Biden-Trump debate, the assassination attempt against Trump, Biden's withdrawal, Walz's VP selection, and the Harris-Trump debate. For each event, the project compares the change in swing-state average Trump lead before and after the event.
 
-![Timeline of campaign reactions](figures/events/timeline.png)
+![Scoreboard of event reactions](figures/events/scoreboard.png)
 
-*Figure 2. Event-response timeline for Polymarket and FiveThirtyEight across the major campaign shocks in the shared analysis window. The two series are plotted on separate y-axes, so this figure should be read as a comparison of direction and timing rather than a direct comparison of magnitudes.*
+*Figure 2. Event-response scoreboard comparing how strongly Polymarket and FiveThirtyEight reacted to each major campaign event. This figure is intended as a relative comparison of response intensity across events and between sources.*
 
 ## Repository Layout
 
