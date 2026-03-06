@@ -411,7 +411,7 @@ def plot_timeseries_crossover(ts, show=False):
         fig,
         title="Polymarket Overtook FiveThirtyEight in State-Level Accuracy",
         subtitle="Tracking the daily prediction accuracy across "
-        "13 overlapping battleground states, Mar-Sep 2024."
+        "13 overlapping states available in both sources, Mar-Sep 2024."
     )
 
     ax.plot(ts["date"], ts["pm_pct"], color=CLR_PM,
