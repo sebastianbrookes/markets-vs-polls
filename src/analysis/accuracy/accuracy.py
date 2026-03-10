@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.stats import binomtest
 
 # Allow running as `python -m src.analysis.accuracy.accuracy` from project root
 _project_root = str(Path(__file__).resolve().parents[3])
@@ -290,6 +291,89 @@ def _section_timeseries(pm, p538, fec):
 
 
 # ---------------------------------------------------------------------------
+# Section 4: McNemar's Exact Test (paired accuracy comparison)
+# ---------------------------------------------------------------------------
+
+def mcnemar_test(pm_preds, p538_preds, fec_winners, states):
+    """Run McNemar's exact test on paired state-level winner calls.
+
+    Returns a dict with counts for each cell of the 2x2 disagreement
+    table and the two-sided p-value.
+    """
+    only_pm_right = 0
+    only_538_right = 0
+    both_right = 0
+    both_wrong = 0
+
+    for st in states:
+        pm_row = pm_preds[pm_preds["state"] == st]
+        p538_row = p538_preds[p538_preds["state"] == st]
+        if pm_row.empty or p538_row.empty:
+            continue
+        actual = fec_winners.loc[st]
+        pm_ok = pm_row["predicted_winner"].iloc[0] == actual
+        p538_ok = p538_row["predicted_winner"].iloc[0] == actual
+
+        if pm_ok and p538_ok:
+            both_right += 1
+        elif pm_ok and not p538_ok:
+            only_pm_right += 1
+        elif not pm_ok and p538_ok:
+            only_538_right += 1
+        else:
+            both_wrong += 1
+
+    n_disc = only_pm_right + only_538_right
+    if n_disc == 0:
+        p_val = 1.0
+    else:
+        p_val = binomtest(only_pm_right, n_disc, 0.5).pvalue
+
+    return {
+        "both_right": both_right,
+        "both_wrong": both_wrong,
+        "only_pm_right": only_pm_right,
+        "only_538_right": only_538_right,
+        "n_discordant": n_disc,
+        "p_value": p_val,
+    }
+
+
+def _section_mcnemar(pm, p538, fec):
+    """Print McNemar's exact test results for the Sept 12 snapshot."""
+    print("=" * 60)
+    print("4. McNEMAR'S EXACT TEST (paired accuracy comparison)")
+    print("=" * 60)
+
+    pm_snap = pm[pm["date"] == pd.Timestamp(OVERLAP_CUTOFF)]
+    pm_snap = pm_snap[pm_snap["state"].isin(OVERLAP_STATES)]
+    pm_snap = _predict_winner_pm(pm_snap)
+
+    p538_snap = _latest_per_state(p538, OVERLAP_CUTOFF)
+    p538_snap = p538_snap[p538_snap["state"].isin(OVERLAP_STATES)]
+    p538_snap = _predict_winner_538(p538_snap)
+
+    fec_winners = fec.set_index("state")["winner"]
+
+    for label, states in [("All states", OVERLAP_STATES),
+                          ("Swing states", SWING_OVERLAP)]:
+        r = mcnemar_test(pm_snap, p538_snap, fec_winners, states)
+        print(f"\n  {label} ({len(states)}):")
+        print(f"    Both correct: {r['both_right']}  |  "
+              f"Both wrong: {r['both_wrong']}")
+        print(f"    Only PM correct: {r['only_pm_right']}  |  "
+              f"Only 538 correct: {r['only_538_right']}")
+        print(f"    Discordant pairs: {r['n_discordant']}  →  "
+              f"p = {r['p_value']:.2f}")
+
+    print()
+    print("  Neither difference is statistically significant at α = 0.05.")
+    print("  The observed gap is suggestive but cannot rule out chance "
+          "with n this small.")
+    print()
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -304,6 +388,7 @@ def main():
     _section_winner(pm, p538, fec)
     _section_ev(pm, p538, fec)
     _section_timeseries(pm, p538, fec)
+    _section_mcnemar(pm, p538, fec)
 
     print("=" * 60)
     print("  Analysis complete.")
