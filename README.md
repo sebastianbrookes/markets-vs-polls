@@ -17,7 +17,7 @@ This project compares **Polymarket** prediction-market prices with **FiveThirtyE
 
 ## Research Questions
 
-1. Which source more accurately predicted actual election outcomes?
+1. Which source aligned more closely with eventual outcomes?
 2. How did prediction markets and polls react to major campaign events, and which source told the more accurate story?
 
 ## Data Sources
