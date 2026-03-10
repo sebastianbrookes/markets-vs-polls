@@ -5,91 +5,40 @@ ground truth for the 2024 U.S. presidential election.
 Sections:
     1. Winner prediction accuracy (head-to-head + Polymarket standalone)
     2. Electoral vote predictions
-    3. Time-series accuracy (daily, March–Sept 12)
+    3. Time-series accuracy (daily, March-Sept 12)
+    4. McNemar's exact test (paired accuracy comparison)
 
 Run from project root:
-    python -m src.analysis.accuracy.accuracy
+    python -m src.analysis.accuracy
 """
 
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-from scipy.stats import binomtest
 
-# Allow running as `python -m src.analysis.accuracy.accuracy` from project root
 _project_root = str(Path(__file__).resolve().parents[3])
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from src.clean.utils import PROCESSED_DIR, SWING_STATES
+from src.analysis.accuracy.metrics import (
+    ELECTION_DATE,
+    OVERLAP_CUTOFF,
+    OVERLAP_STATES,
+    SWING_OVERLAP,
+    THIRTY_DAYS_OUT,
+    compute_daily_accuracy,
+    latest_per_state,
+    load_data,
+    mcnemar_test,
+    predict_winner_pm,
+    predict_winner_538,
+)
+from src.clean.utils import SWING_STATES
 
 # ---------------------------------------------------------------------------
-# Constants
+# Winner prediction helpers (console output)
 # ---------------------------------------------------------------------------
-OVERLAP_CUTOFF = "2024-09-12"   # last date with 538 data
-ELECTION_DATE = "2024-11-05"
-THIRTY_DAYS_OUT = "2024-10-06"
-
-# 13 states present in both sources on Sept 12 (538 minus "US")
-OVERLAP_STATES = [
-    "AZ", "CA", "FL", "GA", "MI", "MN", "NC", "NH", "NV", "OH", "PA",
-    "TX", "WI",
-]
-
-SWING_OVERLAP = sorted(set(OVERLAP_STATES) & set(SWING_STATES))  # 7
-
-
-# ---------------------------------------------------------------------------
-# Data loading & preprocessing
-# ---------------------------------------------------------------------------
-
-def load_data():
-    """Load the three processed CSVs and do minimal prep."""
-    pm = pd.read_csv(PROCESSED_DIR / "polymarket_daily.csv",
-                     parse_dates=["date"])
-    p538 = pd.read_csv(PROCESSED_DIR / "polls_538.csv",
-                       parse_dates=["date"])
-    fec = pd.read_csv(PROCESSED_DIR / "fec_results.csv")
-
-    # Drop 538 national aggregate rows
-    p538 = p538[p538["state"] != "US"].copy()
-
-    return pm, p538, fec
-
-
-def _latest_per_state(p538, as_of):
-    """Forward-fill 538: latest row per state on or before *as_of*."""
-    mask = p538["date"] <= pd.Timestamp(as_of)
-    subset = p538[mask].sort_values(["state", "date"])
-    return subset.drop_duplicates(subset="state", keep="last")
-
-
-# ---------------------------------------------------------------------------
-# Winner prediction helpers
-# ---------------------------------------------------------------------------
-
-def _predict_winner_pm(df):
-    """Add predicted_winner column from Polymarket probabilities.
-
-    Ties at exactly 0.50 are treated as Harris calls.
-    """
-    df = df.copy()
-    df["predicted_winner"] = np.where(
-        df["trump_prob"] > 0.5, "Trump", "Harris"
-    )
-    return df
-
-
-def _predict_winner_538(df):
-    """Add predicted_winner column from 538 vote-share estimates."""
-    df = df.copy()
-    df["predicted_winner"] = np.where(
-        df["trump_pct"] > df["dem_pct"], "Trump", "Harris"
-    )
-    return df
-
 
 def _winner_accuracy(snapshot, fec, label, states=None):
     """Print winner-call accuracy for a snapshot vs FEC results."""
@@ -101,12 +50,11 @@ def _winner_accuracy(snapshot, fec, label, states=None):
     pct = correct / n * 100 if n else 0
     print(f"  {label}: {correct}/{n} correct ({pct:.1f}%)")
 
-    # Show misses
     misses = merged[merged["predicted_winner"] != merged["winner"]]
     if not misses.empty:
         for _, row in misses.iterrows():
-            print(f"    MISS: {row['state']} — predicted {row['predicted_winner']}, "
-                  f"actual {row['winner']}")
+            print(f"    MISS: {row['state']} — predicted "
+                  f"{row['predicted_winner']}, actual {row['winner']}")
     return correct, n
 
 
@@ -120,14 +68,13 @@ def _section_winner(pm, p538, fec):
     print("1. WINNER PREDICTION ACCURACY")
     print("=" * 60)
 
-    # --- Head-to-head on Sept 12, 13 overlap states ---
     pm_snap = pm[pm["date"] == pd.Timestamp(OVERLAP_CUTOFF)]
     pm_snap = pm_snap[pm_snap["state"].isin(OVERLAP_STATES)]
-    pm_snap = _predict_winner_pm(pm_snap)
+    pm_snap = predict_winner_pm(pm_snap)
 
-    p538_snap = _latest_per_state(p538, OVERLAP_CUTOFF)
+    p538_snap = latest_per_state(p538, OVERLAP_CUTOFF)
     p538_snap = p538_snap[p538_snap["state"].isin(OVERLAP_STATES)]
-    p538_snap = _predict_winner_538(p538_snap)
+    p538_snap = predict_winner_538(p538_snap)
 
     print(f"\nHead-to-head on {OVERLAP_CUTOFF} ({len(OVERLAP_STATES)} states):")
     _winner_accuracy(pm_snap, fec, "Polymarket", OVERLAP_STATES)
@@ -137,17 +84,16 @@ def _section_winner(pm, p538, fec):
     _winner_accuracy(pm_snap, fec, "Polymarket", SWING_OVERLAP)
     _winner_accuracy(p538_snap, fec, "538", SWING_OVERLAP)
 
-    # --- Polymarket standalone snapshots ---
     print(f"\nPolymarket standalone — Oct 6 (30 days out):")
     pm_oct = pm[pm["date"] == pd.Timestamp(THIRTY_DAYS_OUT)]
-    pm_oct = _predict_winner_pm(pm_oct)
+    pm_oct = predict_winner_pm(pm_oct)
     _winner_accuracy(pm_oct, fec, "All states")
     _winner_accuracy(pm_oct, fec, "Swing states", SWING_STATES)
 
     print(f"\nPolymarket standalone — Nov 4 (election eve):")
     pm_eve = pm[pm["date"] == pd.Timestamp(ELECTION_DATE).normalize()
                 - pd.Timedelta(days=1)]
-    pm_eve = _predict_winner_pm(pm_eve)
+    pm_eve = predict_winner_pm(pm_eve)
     _winner_accuracy(pm_eve, fec, "All states")
     _winner_accuracy(pm_eve, fec, "Swing states", SWING_STATES)
     print()
@@ -176,30 +122,28 @@ def _section_ev(pm, p538, fec):
     print("=" * 60)
     print(f"  Actual 2024 result: Trump 312 — Harris 226\n")
 
-    # Head-to-head on 13 overlap states, Sept 12
     pm_snap = pm[pm["date"] == pd.Timestamp(OVERLAP_CUTOFF)]
     pm_snap = pm_snap[pm_snap["state"].isin(OVERLAP_STATES)]
-    pm_snap = _predict_winner_pm(pm_snap)
+    pm_snap = predict_winner_pm(pm_snap)
 
-    p538_snap = _latest_per_state(p538, OVERLAP_CUTOFF)
+    p538_snap = latest_per_state(p538, OVERLAP_CUTOFF)
     p538_snap = p538_snap[p538_snap["state"].isin(OVERLAP_STATES)]
-    p538_snap = _predict_winner_538(p538_snap)
+    p538_snap = predict_winner_538(p538_snap)
 
     print(f"  Head-to-head ({OVERLAP_CUTOFF}, {len(OVERLAP_STATES)} states):")
     _ev_prediction(pm_snap, fec, "Polymarket")
     _ev_prediction(p538_snap, fec, "538")
 
-    # Polymarket standalone on election eve (all 50 states)
     pm_eve = pm[pm["date"] == pd.Timestamp(ELECTION_DATE).normalize()
                 - pd.Timedelta(days=1)]
-    pm_eve = _predict_winner_pm(pm_eve)
+    pm_eve = predict_winner_pm(pm_eve)
     print(f"\n  Polymarket standalone (Nov 4, all states):")
     _ev_prediction(pm_eve, fec, "Polymarket")
     print()
 
 
 # ---------------------------------------------------------------------------
-# Section 3: Time-Series Accuracy (daily, March–Sept 12)
+# Section 3: Time-Series Accuracy (daily, March-Sept 12)
 # ---------------------------------------------------------------------------
 
 def _section_timeseries(pm, p538, fec):
@@ -208,57 +152,7 @@ def _section_timeseries(pm, p538, fec):
     print("3. TIME-SERIES ACCURACY (daily, March 2024 – Sept 12)")
     print("=" * 60)
 
-    # Build date range: first date both sources have data → Sept 12
-    pm_start = pm["date"].min()
-    p538_start = p538["date"].min()
-    start = max(pm_start, p538_start)
-    end = pd.Timestamp(OVERLAP_CUTOFF)
-    dates = pd.date_range(start, end, freq="D")
-
-    fec_winners = fec.set_index("state")["winner"]
-
-    records = []
-    for d in dates:
-        # Polymarket snapshot
-        pm_day = pm[pm["date"] == d]
-        pm_day = pm_day[pm_day["state"].isin(OVERLAP_STATES)]
-        if pm_day.empty:
-            continue
-        pm_day = _predict_winner_pm(pm_day)
-
-        # 538 forward-fill snapshot
-        p5_day = _latest_per_state(p538, d)
-        p5_day = p5_day[p5_day["state"].isin(OVERLAP_STATES)]
-        if p5_day.empty:
-            continue
-        p5_day = _predict_winner_538(p5_day)
-
-        # Common states available on this day
-        common = sorted(set(pm_day["state"]) & set(p5_day["state"]))
-        if not common:
-            continue
-
-        pm_correct = sum(
-            pm_day.loc[pm_day["state"] == s, "predicted_winner"].iloc[0]
-            == fec_winners.get(s, "")
-            for s in common
-        )
-        p5_correct = sum(
-            p5_day.loc[p5_day["state"] == s, "predicted_winner"].iloc[0]
-            == fec_winners.get(s, "")
-            for s in common
-        )
-
-        records.append({
-            "date": d,
-            "n_states": len(common),
-            "pm_correct": pm_correct,
-            "p538_correct": p5_correct,
-            "pm_pct": pm_correct / len(common) * 100,
-            "p538_pct": p5_correct / len(common) * 100,
-        })
-
-    ts = pd.DataFrame(records)
+    ts = compute_daily_accuracy(pm, p538, fec)
 
     if ts.empty:
         print("  No overlapping data found.\n")
@@ -272,7 +166,6 @@ def _section_timeseries(pm, p538, fec):
     print(f"    538:        {ts['p538_pct'].mean():.1f}%  "
           f"(median {ts['p538_pct'].median():.1f}%)")
 
-    # Period breakdown
     periods = [
         ("Mar–May", "2024-03-01", "2024-05-31"),
         ("Jun–Jul", "2024-06-01", "2024-07-31"),
@@ -291,53 +184,8 @@ def _section_timeseries(pm, p538, fec):
 
 
 # ---------------------------------------------------------------------------
-# Section 4: McNemar's Exact Test (paired accuracy comparison)
+# Section 4: McNemar's Exact Test
 # ---------------------------------------------------------------------------
-
-def mcnemar_test(pm_preds, p538_preds, fec_winners, states):
-    """Run McNemar's exact test on paired state-level winner calls.
-
-    Returns a dict with counts for each cell of the 2x2 disagreement
-    table and the two-sided p-value.
-    """
-    only_pm_right = 0
-    only_538_right = 0
-    both_right = 0
-    both_wrong = 0
-
-    for st in states:
-        pm_row = pm_preds[pm_preds["state"] == st]
-        p538_row = p538_preds[p538_preds["state"] == st]
-        if pm_row.empty or p538_row.empty:
-            continue
-        actual = fec_winners.loc[st]
-        pm_ok = pm_row["predicted_winner"].iloc[0] == actual
-        p538_ok = p538_row["predicted_winner"].iloc[0] == actual
-
-        if pm_ok and p538_ok:
-            both_right += 1
-        elif pm_ok and not p538_ok:
-            only_pm_right += 1
-        elif not pm_ok and p538_ok:
-            only_538_right += 1
-        else:
-            both_wrong += 1
-
-    n_disc = only_pm_right + only_538_right
-    if n_disc == 0:
-        p_val = 1.0
-    else:
-        p_val = binomtest(only_pm_right, n_disc, 0.5).pvalue
-
-    return {
-        "both_right": both_right,
-        "both_wrong": both_wrong,
-        "only_pm_right": only_pm_right,
-        "only_538_right": only_538_right,
-        "n_discordant": n_disc,
-        "p_value": p_val,
-    }
-
 
 def _section_mcnemar(pm, p538, fec):
     """Print McNemar's exact test results for the Sept 12 snapshot."""
@@ -347,11 +195,11 @@ def _section_mcnemar(pm, p538, fec):
 
     pm_snap = pm[pm["date"] == pd.Timestamp(OVERLAP_CUTOFF)]
     pm_snap = pm_snap[pm_snap["state"].isin(OVERLAP_STATES)]
-    pm_snap = _predict_winner_pm(pm_snap)
+    pm_snap = predict_winner_pm(pm_snap)
 
-    p538_snap = _latest_per_state(p538, OVERLAP_CUTOFF)
+    p538_snap = latest_per_state(p538, OVERLAP_CUTOFF)
     p538_snap = p538_snap[p538_snap["state"].isin(OVERLAP_STATES)]
-    p538_snap = _predict_winner_538(p538_snap)
+    p538_snap = predict_winner_538(p538_snap)
 
     fec_winners = fec.set_index("state")["winner"]
 
