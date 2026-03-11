@@ -104,9 +104,11 @@ def style_axis(ax, hide_x=False, hide_y=False):
 
 def add_titles(fig, title, subtitle, title_y=0.98, subtitle_y=0.92):
     """Adds left-aligned title and subtitle to the figure."""
-    fig.text(0.04, title_y, title, fontsize=15,
+    fig.text(
+            0.04, title_y, title, fontsize=15,
              fontweight="bold", color=CLR_TEXT,
-             ha="left")
+             ha="left"
+             )
     fig.text(0.04, subtitle_y, subtitle,
              fontsize=11, color=CLR_SUBTEXT,
              ha="left")
@@ -384,7 +386,7 @@ def main():
     plot_polymarket_trajectory(trajectory)
     plot_ev_comparison(ev)
 
-    print("Done - 4 refined plots saved to figures/accuracy/")
+    print("Done - 4 plots saved to figures/accuracy/")
 
 
 if __name__ == "__main__":
