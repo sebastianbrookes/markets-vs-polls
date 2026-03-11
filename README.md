@@ -13,7 +13,7 @@ This project compares **Polymarket** prediction-market prices with **FiveThirtyE
 
 ![State-by-state accuracy comparison](figures/accuracy/head-to-head.png)
 
-*Figure 1. Snapshot accuracy on September 12, 2024, the final date available in both sources. On the last common date, Polymarket made more correct state calls overall and in the swing-state subset.*
+*Figure 1. Snapshot accuracy on September 12, 2024, the final date available in both sources. On the last overlapping date, Polymarket made more correct state calls overall and in the swing-state subset.*
 
 ## Research Questions
 
