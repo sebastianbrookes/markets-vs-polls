@@ -5,7 +5,6 @@ Computation engine for the accuracy analysis
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from scipy.stats import binomtest
 
@@ -109,7 +108,9 @@ def predict_winner_pm(df):
         Copy with predicted_winner column added.
     """
     df = df.copy()
-    df["predicted_winner"] = np.where(df["trump_prob"] > 0.5, "Trump", "Harris")
+    df["predicted_winner"] = df["trump_prob"].apply(
+        lambda x: "Trump" if x > 0.5 else "Harris"
+    )
     return df
 
 
@@ -128,10 +129,9 @@ def predict_winner_538(df):
         Copy with predicted_winner column added.
     """
     df = df.copy()
-    df["predicted_winner"] = np.where(
-        df["trump_pct"] > df["dem_pct"],
-        "Trump",
-        "Harris",
+    df["predicted_winner"] = df.apply(
+        lambda row: "Trump" if row["trump_pct"] > row["dem_pct"] else "Harris",
+        axis=1,
     )
     return df
 
