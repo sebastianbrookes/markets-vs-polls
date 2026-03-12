@@ -25,13 +25,19 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from src.analysis.accuracy.metrics import (
+    ELECTION_EVE,
+    OVERLAP_CUTOFF,
+    OVERLAP_STATES,
     PERIODS,
+    SWING_OVERLAP,
+    THIRTY_DAYS_OUT,
     build_ev_comparison_metrics,
     build_head_to_head_metrics,
     build_polymarket_trajectory_metrics,
     compute_daily_accuracy,
     load_data,
 )
+from src.clean.utils import PROCESSED_DIR, SWING_STATES
 
 # ---------------------------------------------------------------------------
 # Constants & Colors
@@ -372,13 +378,33 @@ def main():
     configure_plot_style()
 
     print("Loading data...")
-    pm, p538, fec = load_data()
+    pm, p538, fec = load_data(PROCESSED_DIR)
 
     print("Computing metrics...")
-    ts = compute_daily_accuracy(pm, p538, fec)
-    head_to_head = build_head_to_head_metrics(pm, p538, fec)
-    trajectory = build_polymarket_trajectory_metrics(pm, fec)
-    ev = build_ev_comparison_metrics(pm, p538, fec)
+    ts = compute_daily_accuracy(
+        pm, p538, fec, OVERLAP_CUTOFF, OVERLAP_STATES
+    )
+    groups = [
+        ("All 13 States", OVERLAP_STATES),
+        (
+            f"{len(SWING_OVERLAP)} Swing States",
+            SWING_OVERLAP,
+        ),
+    ]
+    head_to_head = build_head_to_head_metrics(
+        pm, p538, fec, OVERLAP_CUTOFF, groups
+    )
+    snapshots = [
+        ("Sept 12", OVERLAP_CUTOFF, OVERLAP_STATES),
+        ("Oct 6", THIRTY_DAYS_OUT, None),
+        ("Nov 4", ELECTION_EVE, None),
+    ]
+    trajectory = build_polymarket_trajectory_metrics(
+        pm, fec, snapshots, SWING_STATES
+    )
+    ev = build_ev_comparison_metrics(
+        pm, p538, fec, OVERLAP_CUTOFF, OVERLAP_STATES
+    )
 
     print("Generating plots...")
     plot_timeseries_crossover(ts)
