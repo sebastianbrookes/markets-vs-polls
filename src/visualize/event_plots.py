@@ -35,54 +35,54 @@ from src.analysis.events.event_response import (
     load_data,
 )
 
-
-@dataclass
-class Theme:
-    PM_COLOR: str = "#004276"
-    F38_COLOR: str = "#D95F02"
-    GRID_COLOR: str = "#E2E2E2"
-    TEXT_MAIN: str = "#303030"
-    TEXT_MUTED: str = "#6F6F6F"
-    EVENT_BAND: str = "#F3F3F3"
-    FONT_STACK: tuple[str, ...] = ("Inter", "DejaVu Sans", "sans-serif")
-    DPI: int = 300
-
-
-THEME = Theme()
 FIGURES_DIR = Path(PROJECT_ROOT) / "figures" / "events"
+
+CLR_PM = "#004276"
+CLR_538 = "#D95F02"
+CLR_GRID = "#E2E2E2"
+CLR_TEXT = "#303030"
+CLR_SUBTEXT = "#6F6F6F"
+CLR_EVENT_BAND = "#F3F3F3"
+
+FONTS = ("Avenir Next", "Calibri", "sans-serif")
+DPI = 300
+
 TIMELINE_START = pd.Timestamp("2024-06-01")
 TIMELINE_END = pd.Timestamp("2024-09-12")
+
 EVENT_LABEL_LEVELS = {
     "Biden Drops Out": 1,
 }
+
 SOURCES = (
-    ("Polymarket", "Polymarket", THEME.PM_COLOR, -0.175),
-    ("538", "FiveThirtyEight", THEME.F38_COLOR, 0.175),
+    ("Polymarket", "Polymarket", CLR_PM, -0.175),
+    ("538", "FiveThirtyEight", CLR_538, 0.175),
 )
 
 
-def apply_style():
-    """Apply shared matplotlib defaults."""
+def configure_plot_style():
+    """Apply a style baseline for all figures."""
+    plt.style.use("default")
     plt.rcParams.update(
         {
-            "figure.dpi": THEME.DPI,
+            "figure.dpi": DPI,
             "figure.facecolor": "white",
             "axes.facecolor": "white",
-            "axes.edgecolor": THEME.TEXT_MAIN,
+            "axes.edgecolor": CLR_TEXT,
             "axes.linewidth": 0.5,
             "axes.axisbelow": True,
             "axes.spines.top": False,
             "axes.spines.right": False,
             "axes.spines.left": False,
-            "text.color": THEME.TEXT_MAIN,
-            "font.family": list(THEME.FONT_STACK),
+            "text.color": CLR_TEXT,
+            "font.family": list(FONTS),
             "font.size": 10,
-            "xtick.color": THEME.TEXT_MUTED,
-            "ytick.color": THEME.TEXT_MUTED,
+            "xtick.color": CLR_SUBTEXT,
+            "ytick.color": CLR_SUBTEXT,
             "xtick.major.size": 4,
             "xtick.major.width": 0.5,
             "ytick.left": False,
-            "grid.color": THEME.GRID_COLOR,
+            "grid.color": CLR_GRID,
             "grid.linewidth": 0.6,
             "legend.frameon": False,
         }
@@ -92,7 +92,9 @@ def apply_style():
 def format_header(fig, title, subtitle):
     """Add a left-aligned title block."""
     fig.text(0.05, 0.98, title, fontsize=16, fontweight="bold", ha="left", va="top")
-    fig.text(0.05, 0.93, subtitle, fontsize=11, color=THEME.TEXT_MUTED, ha="left", va="top")
+    fig.text(
+        0.05, 0.93, subtitle, fontsize=11, color=THEME.TEXT_MUTED, ha="left", va="top"
+    )
 
 
 def _filter_window(series, start, end):
@@ -179,51 +181,68 @@ def plot_event_timeline(pm_swing, p538_swing, show=False):
     fig.subplots_adjust(top=0.78, right=0.82)
 
     ax2 = ax1.twinx()
-    
+
     # Plot the lines and assign labels for the legend
     line1 = ax1.plot(
-        pm_filtered.index, pm_filtered.values, 
-        color=THEME.PM_COLOR, linewidth=2.5, zorder=4, 
-        label="Polymarket (Win Prob.)"
+        pm_filtered.index,
+        pm_filtered.values,
+        color=THEME.PM_COLOR,
+        linewidth=2.5,
+        zorder=4,
+        label="Polymarket (Win Prob.)",
     )
     line2 = ax2.plot(
-        p538_filtered.index, p538_filtered.values, 
-        color=THEME.F38_COLOR, linewidth=2.2, zorder=3, 
-        label="FiveThirtyEight (Vote Share %)"
+        p538_filtered.index,
+        p538_filtered.values,
+        color=THEME.F38_COLOR,
+        linewidth=2.2,
+        zorder=3,
+        label="FiveThirtyEight (Vote Share %)",
     )
     ax2.spines["right"].set_visible(False)
 
     # Color-code tick labels and add explicit axis labels
     ax1.tick_params(axis="y", colors=THEME.PM_COLOR, labelsize=11)
-    ax1.set_ylabel("Win Probability", color=THEME.PM_COLOR, 
-                   fontweight="bold", fontsize=11, labelpad=10)
-    
+    ax1.set_ylabel(
+        "Win Probability",
+        color=THEME.PM_COLOR,
+        fontweight="bold",
+        fontsize=11,
+        labelpad=10,
+    )
+
     ax2.tick_params(axis="y", colors=THEME.F38_COLOR, labelsize=11)
-    ax2.set_ylabel("Vote Share %", color=THEME.F38_COLOR, 
-                   fontweight="bold", fontsize=11, rotation=-90, labelpad=20)
+    ax2.set_ylabel(
+        "Vote Share %",
+        color=THEME.F38_COLOR,
+        fontweight="bold",
+        fontsize=11,
+        rotation=-90,
+        labelpad=20,
+    )
 
     _align_dual_axes(ax1, ax2)
     ax1.axhline(0, color=THEME.TEXT_MAIN, linewidth=1.2, zorder=2)
 
     lines = line1 + line2
     labels = [l.get_label() for l in lines]
-    
+
     leg = ax1.legend(
-        lines, labels, 
-        loc="upper right", 
-        bbox_to_anchor=(1.0, 1.32), 
-        ncol=1, 
-        frameon=False, 
+        lines,
+        labels,
+        loc="upper right",
+        bbox_to_anchor=(1.0, 1.32),
+        ncol=1,
+        frameon=False,
         fontsize=11,
         handletextpad=0.5,
-        labelspacing=0.6
+        labelspacing=0.6,
     )
-    
+
     # Color-code the legend text to perfectly match the lines
     for text, color in zip(leg.get_texts(), [THEME.PM_COLOR, THEME.F38_COLOR]):
         text.set_color(color)
         text.set_fontweight("bold")
-    # --------------------------------------------------------------
 
     if not pm_filtered.empty:
         start_date = pm_filtered.index.min()
@@ -231,7 +250,7 @@ def plot_event_timeline(pm_swing, p538_swing, show=False):
         start_date = p538_filtered.index.min()
     else:
         start_date = TIMELINE_START
-        
+
     ax1.annotate(
         "Trump leads",
         xy=(start_date, 0),
@@ -331,8 +350,17 @@ def plot_reaction_scoreboard(summary, show=False):
     ax.grid(False)
 
     legend_elements = [
-        Patch(facecolor=THEME.TEXT_MAIN, edgecolor=THEME.TEXT_MAIN, label="Expected direction"),
-        Patch(facecolor="white", edgecolor=THEME.TEXT_MAIN, linewidth=1.4, label="Unexpected direction"),
+        Patch(
+            facecolor=THEME.TEXT_MAIN,
+            edgecolor=THEME.TEXT_MAIN,
+            label="Expected direction",
+        ),
+        Patch(
+            facecolor="white",
+            edgecolor=THEME.TEXT_MAIN,
+            linewidth=1.4,
+            label="Unexpected direction",
+        ),
         Line2D([0], [0], color=THEME.PM_COLOR, lw=4, label="Polymarket"),
         Line2D([0], [0], color=THEME.F38_COLOR, lw=4, label="FiveThirtyEight"),
     ]
@@ -362,7 +390,9 @@ def _steepest_drop_day(series):
 
 def plot_indexed_event_study(pm_swing, p538_swing, show=False):
     """Plot response timing around Biden dropping out."""
-    hero_date = next(event["date"] for event in EVENTS if event["name"] == "Biden Drops Out")
+    hero_date = next(
+        event["date"] for event in EVENTS if event["name"] == "Biden Drops Out"
+    )
     pm_window = compute_raw_indexed_window(pm_swing, hero_date, pre_days=1, scale=100)
     p538_window = compute_raw_indexed_window(p538_swing, hero_date, pre_days=1, scale=1)
 
@@ -371,8 +401,16 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
     ax1.grid(axis="y", alpha=0.5)
 
     ax2 = ax1.twinx()
-    ax1.step(pm_window.index, pm_window.values, where="post", color=THEME.PM_COLOR, linewidth=2.5)
-    ax2.plot(p538_window.index, p538_window.values, color=THEME.F38_COLOR, linewidth=2.3)
+    ax1.step(
+        pm_window.index,
+        pm_window.values,
+        where="post",
+        color=THEME.PM_COLOR,
+        linewidth=2.5,
+    )
+    ax2.plot(
+        p538_window.index, p538_window.values, color=THEME.F38_COLOR, linewidth=2.3
+    )
     ax2.spines["right"].set_visible(False)
 
     _align_dual_axes(ax1, ax2)
@@ -381,37 +419,37 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
     ax1.axvline(0, color=THEME.TEXT_MAIN, linewidth=1, linestyle=":", zorder=2)
     ax1.axhline(0, color=THEME.TEXT_MAIN, linewidth=1, zorder=2)
     ax1.text(
-        0,       # x-coordinate in data space (Day 0)
-        0.04,    # y-coordinate in axes space (4% up from the bottom spine)
-        "Biden withdraws", 
-        color=THEME.TEXT_MAIN, 
+        0,  # x-coordinate in data space (Day 0)
+        0.04,  # y-coordinate in axes space (4% up from the bottom spine)
+        "Biden withdraws",
+        color=THEME.TEXT_MAIN,
         fontsize=9,
-        ha="center", 
+        ha="center",
         va="bottom",
-        transform=ax1.get_xaxis_transform(), # Blends data x-coords and fractional y-coords
-        bbox=dict(facecolor="white", edgecolor="none", pad=4), # The invisible mask
-        zorder=3 # Ensures the text sits above the axvline (which is zorder=2)
+        transform=ax1.get_xaxis_transform(),  # Blends data x-coords and fractional y-coords
+        bbox=dict(facecolor="white", edgecolor="none", pad=4),  # The invisible mask
+        zorder=3,  # Ensures the text sits above the axvline (which is zorder=2)
     )
 
     # Left Axis Title (Polymarket)
     ax1.set_ylabel(
-        "Polymarket\n(percentage points)", 
-        color=THEME.PM_COLOR, 
-        fontsize=11, 
+        "Polymarket\n(percentage points)",
+        color=THEME.PM_COLOR,
+        fontsize=11,
         fontweight="bold",
         linespacing=1.4,
-        labelpad=10
+        labelpad=10,
     )
 
     # Right Axis Title (FiveThirtyEight)
     ax2.set_ylabel(
-        "FiveThirtyEight\n(vote share points)", 
-        color=THEME.F38_COLOR, 
-        fontsize=11, 
+        "FiveThirtyEight\n(vote share points)",
+        color=THEME.F38_COLOR,
+        fontsize=11,
         fontweight="bold",
         linespacing=1.4,
         rotation=270,  # Flips text so the baseline points towards the axis
-        labelpad=40    # Extra padding to clear the tick labels
+        labelpad=40,  # Extra padding to clear the tick labels
     )
 
     pm_lag = _steepest_drop_day(pm_window)
@@ -423,7 +461,9 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
             "",
             xy=(p538_lag, y_bracket),
             xytext=(pm_lag, y_bracket),
-            arrowprops=dict(arrowstyle="|-|,widthA=0.2,widthB=0.2", color=THEME.TEXT_MAIN, lw=1.2),
+            arrowprops=dict(
+                arrowstyle="|-|,widthA=0.2,widthB=0.2", color=THEME.TEXT_MAIN, lw=1.2
+            ),
         )
         ax1.annotate(
             f"{int(p538_lag - pm_lag)}-day lag",
@@ -438,7 +478,14 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
         )
 
         pm_value = pm_window.loc[pm_lag]
-        ax1.plot([pm_lag, pm_lag], [y_bracket, pm_value], color=THEME.PM_COLOR, linestyle=":", lw=1.2, alpha=0.7)
+        ax1.plot(
+            [pm_lag, pm_lag],
+            [y_bracket, pm_value],
+            color=THEME.PM_COLOR,
+            linestyle=":",
+            lw=1.2,
+            alpha=0.7,
+        )
         ax1.plot([pm_lag], [pm_value], marker="o", color=THEME.PM_COLOR, markersize=5)
 
         p538_value = p538_window.loc[p538_lag]
@@ -451,7 +498,9 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
             lw=1.2,
             alpha=0.7,
         )
-        ax2.plot([p538_lag], [p538_value], marker="o", color=THEME.F38_COLOR, markersize=5)
+        ax2.plot(
+            [p538_lag], [p538_value], marker="o", color=THEME.F38_COLOR, markersize=5
+        )
 
     ax1.set_xlabel("Days from event")
 

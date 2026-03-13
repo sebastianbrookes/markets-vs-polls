@@ -61,8 +61,7 @@ def configure_plot_style():
     plt.style.use("default")
     plt.rcParams.update(
         {
-            "font.family": "sans-serif",
-            "font.sans-serif": ["Inter", "DejaVu Sans", "sans-serif"],
+            "font.family": ["Avenir Next", "Calibri", "sans-serif"],
             "figure.dpi": DPI,
             "figure.facecolor": "white",
             "axes.facecolor": "white",
