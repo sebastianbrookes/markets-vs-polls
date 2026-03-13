@@ -53,7 +53,7 @@ CLR_TEXT = "#333333"
 CLR_SUBTEXT = "#666666"
 CLR_GRID = "#EBEBEB"
 
-FONTS = ["Avenir Next", "Calibri", "sans-serif"]
+FONTS = ["Avenir Next","DejaVu Sans", "sans-serif"]
 DPI = 300
 
 

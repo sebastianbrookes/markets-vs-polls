@@ -45,7 +45,7 @@ CLR_TEXT = "#303030"
 CLR_SUBTEXT = "#6F6F6F"
 CLR_EVENT_BAND = "#F3F3F3"
 
-FONTS = ("Avenir Next", "sans-serif")
+FONTS = ("Avenir Next", "DejaVu Sans", "sans-serif")
 DPI = 300
 
 TIMELINE_START = pd.Timestamp("2024-06-01")
