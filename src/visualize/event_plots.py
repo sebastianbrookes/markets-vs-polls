@@ -12,7 +12,6 @@ Run from project root:
 """
 
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib.dates as mdates
@@ -28,12 +27,14 @@ if PROJECT_ROOT not in sys.path:
 
 from src.analysis.events.event_response import (
     EVENTS,
+    OVERLAP_CUTOFF,
+    build_fivethirtyeight_swing_series,
     build_reaction_summary,
-    compute_538_swing_timeseries,
     compute_raw_indexed_window,
     compute_swing_average,
-    load_data,
+    load_daily_data,
 )
+from src.clean.utils import PROCESSED_DIR, SWING_STATES
 
 FIGURES_DIR = Path(PROJECT_ROOT) / "figures" / "events"
 
@@ -44,7 +45,7 @@ CLR_TEXT = "#303030"
 CLR_SUBTEXT = "#6F6F6F"
 CLR_EVENT_BAND = "#F3F3F3"
 
-FONTS = ("Avenir Next", "Calibri", "sans-serif")
+FONTS = ("Avenir Next", "sans-serif")
 DPI = 300
 
 TIMELINE_START = pd.Timestamp("2024-06-01")
@@ -93,7 +94,7 @@ def format_header(fig, title, subtitle):
     """Add a left-aligned title block."""
     fig.text(0.05, 0.98, title, fontsize=16, fontweight="bold", ha="left", va="top")
     fig.text(
-        0.05, 0.93, subtitle, fontsize=11, color=THEME.TEXT_MUTED, ha="left", va="top"
+        0.05, 0.93, subtitle, fontsize=11, color=CLR_SUBTEXT, ha="left", va="top"
     )
 
 
@@ -146,7 +147,7 @@ def _add_event_bands(ax, y_anchor, start, end):
         ax.axvspan(
             event_date - pd.Timedelta(days=1),
             event_date + pd.Timedelta(days=1),
-            color=THEME.EVENT_BAND,
+            color=CLR_EVENT_BAND,
             zorder=1,
         )
 
@@ -159,7 +160,7 @@ def _add_event_bands(ax, y_anchor, start, end):
             ha="center",
             va="bottom",
             fontsize=8.5,
-            color=THEME.TEXT_MAIN,
+            color=CLR_TEXT,
             annotation_clip=False,
         )
 
@@ -186,7 +187,7 @@ def plot_event_timeline(pm_swing, p538_swing, show=False):
     line1 = ax1.plot(
         pm_filtered.index,
         pm_filtered.values,
-        color=THEME.PM_COLOR,
+        color=CLR_PM,
         linewidth=2.5,
         zorder=4,
         label="Polymarket (Win Prob.)",
@@ -194,7 +195,7 @@ def plot_event_timeline(pm_swing, p538_swing, show=False):
     line2 = ax2.plot(
         p538_filtered.index,
         p538_filtered.values,
-        color=THEME.F38_COLOR,
+        color=CLR_538,
         linewidth=2.2,
         zorder=3,
         label="FiveThirtyEight (Vote Share %)",
@@ -202,19 +203,19 @@ def plot_event_timeline(pm_swing, p538_swing, show=False):
     ax2.spines["right"].set_visible(False)
 
     # Color-code tick labels and add explicit axis labels
-    ax1.tick_params(axis="y", colors=THEME.PM_COLOR, labelsize=11)
+    ax1.tick_params(axis="y", colors=CLR_PM, labelsize=11)
     ax1.set_ylabel(
         "Win Probability",
-        color=THEME.PM_COLOR,
+        color=CLR_PM,
         fontweight="bold",
         fontsize=11,
         labelpad=10,
     )
 
-    ax2.tick_params(axis="y", colors=THEME.F38_COLOR, labelsize=11)
+    ax2.tick_params(axis="y", colors=CLR_538, labelsize=11)
     ax2.set_ylabel(
         "Vote Share %",
-        color=THEME.F38_COLOR,
+        color=CLR_538,
         fontweight="bold",
         fontsize=11,
         rotation=-90,
@@ -222,7 +223,7 @@ def plot_event_timeline(pm_swing, p538_swing, show=False):
     )
 
     _align_dual_axes(ax1, ax2)
-    ax1.axhline(0, color=THEME.TEXT_MAIN, linewidth=1.2, zorder=2)
+    ax1.axhline(0, color=CLR_TEXT, linewidth=1.2, zorder=2)
 
     lines = line1 + line2
     labels = [l.get_label() for l in lines]
@@ -240,7 +241,7 @@ def plot_event_timeline(pm_swing, p538_swing, show=False):
     )
 
     # Color-code the legend text to perfectly match the lines
-    for text, color in zip(leg.get_texts(), [THEME.PM_COLOR, THEME.F38_COLOR]):
+    for text, color in zip(leg.get_texts(), [CLR_PM, CLR_538]):
         text.set_color(color)
         text.set_fontweight("bold")
 
@@ -256,7 +257,7 @@ def plot_event_timeline(pm_swing, p538_swing, show=False):
         xy=(start_date, 0),
         xytext=(10, 8),
         textcoords="offset points",
-        color=THEME.TEXT_MUTED,
+        color=CLR_SUBTEXT,
         fontsize=9,
         va="bottom",
     )
@@ -265,7 +266,7 @@ def plot_event_timeline(pm_swing, p538_swing, show=False):
         xy=(start_date, 0),
         xytext=(10, -8),
         textcoords="offset points",
-        color=THEME.TEXT_MUTED,
+        color=CLR_SUBTEXT,
         fontsize=9,
         va="top",
     )
@@ -296,7 +297,7 @@ def plot_reaction_scoreboard(summary, show=False):
 
     fig, ax = plt.subplots(figsize=(10, 6.5))
     fig.subplots_adjust(top=0.78, left=0.25)
-    ax.axvline(0, color=THEME.TEXT_MAIN, linewidth=1, zorder=2)
+    ax.axvline(0, color=CLR_TEXT, linewidth=1, zorder=2)
 
     max_abs_z = 0.0
     for i, event_name in enumerate(event_names):
@@ -351,18 +352,18 @@ def plot_reaction_scoreboard(summary, show=False):
 
     legend_elements = [
         Patch(
-            facecolor=THEME.TEXT_MAIN,
-            edgecolor=THEME.TEXT_MAIN,
+            facecolor=CLR_TEXT,
+            edgecolor=CLR_TEXT,
             label="Expected direction",
         ),
         Patch(
             facecolor="white",
-            edgecolor=THEME.TEXT_MAIN,
+            edgecolor=CLR_TEXT,
             linewidth=1.4,
             label="Unexpected direction",
         ),
-        Line2D([0], [0], color=THEME.PM_COLOR, lw=4, label="Polymarket"),
-        Line2D([0], [0], color=THEME.F38_COLOR, lw=4, label="FiveThirtyEight"),
+        Line2D([0], [0], color=CLR_PM, lw=4, label="Polymarket"),
+        Line2D([0], [0], color=CLR_538, lw=4, label="FiveThirtyEight"),
     ]
     ax.legend(
         handles=legend_elements,
@@ -405,24 +406,24 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
         pm_window.index,
         pm_window.values,
         where="post",
-        color=THEME.PM_COLOR,
+        color=CLR_PM,
         linewidth=2.5,
     )
     ax2.plot(
-        p538_window.index, p538_window.values, color=THEME.F38_COLOR, linewidth=2.3
+        p538_window.index, p538_window.values, color=CLR_538, linewidth=2.3
     )
     ax2.spines["right"].set_visible(False)
 
     _align_dual_axes(ax1, ax2)
-    ax1.tick_params(axis="y", colors=THEME.PM_COLOR)
-    ax2.tick_params(axis="y", colors=THEME.F38_COLOR)
-    ax1.axvline(0, color=THEME.TEXT_MAIN, linewidth=1, linestyle=":", zorder=2)
-    ax1.axhline(0, color=THEME.TEXT_MAIN, linewidth=1, zorder=2)
+    ax1.tick_params(axis="y", colors=CLR_PM)
+    ax2.tick_params(axis="y", colors=CLR_538)
+    ax1.axvline(0, color=CLR_TEXT, linewidth=1, linestyle=":", zorder=2)
+    ax1.axhline(0, color=CLR_TEXT, linewidth=1, zorder=2)
     ax1.text(
         0,  # x-coordinate in data space (Day 0)
         0.04,  # y-coordinate in axes space (4% up from the bottom spine)
         "Biden withdraws",
-        color=THEME.TEXT_MAIN,
+        color=CLR_TEXT,
         fontsize=9,
         ha="center",
         va="bottom",
@@ -434,7 +435,7 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
     # Left Axis Title (Polymarket)
     ax1.set_ylabel(
         "Polymarket\n(percentage points)",
-        color=THEME.PM_COLOR,
+        color=CLR_PM,
         fontsize=11,
         fontweight="bold",
         linespacing=1.4,
@@ -444,7 +445,7 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
     # Right Axis Title (FiveThirtyEight)
     ax2.set_ylabel(
         "FiveThirtyEight\n(vote share points)",
-        color=THEME.F38_COLOR,
+        color=CLR_538,
         fontsize=11,
         fontweight="bold",
         linespacing=1.4,
@@ -462,7 +463,7 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
             xy=(p538_lag, y_bracket),
             xytext=(pm_lag, y_bracket),
             arrowprops=dict(
-                arrowstyle="|-|,widthA=0.2,widthB=0.2", color=THEME.TEXT_MAIN, lw=1.2
+                arrowstyle="|-|,widthA=0.2,widthB=0.2", color=CLR_TEXT, lw=1.2
             ),
         )
         ax1.annotate(
@@ -474,32 +475,32 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
             va="bottom",
             fontsize=10,
             fontweight="bold",
-            color=THEME.TEXT_MAIN,
+            color=CLR_TEXT,
         )
 
         pm_value = pm_window.loc[pm_lag]
         ax1.plot(
             [pm_lag, pm_lag],
             [y_bracket, pm_value],
-            color=THEME.PM_COLOR,
+            color=CLR_PM,
             linestyle=":",
             lw=1.2,
             alpha=0.7,
         )
-        ax1.plot([pm_lag], [pm_value], marker="o", color=THEME.PM_COLOR, markersize=5)
+        ax1.plot([pm_lag], [pm_value], marker="o", color=CLR_PM, markersize=5)
 
         p538_value = p538_window.loc[p538_lag]
         y_bracket_ax2 = _map_y_between_axes(y_bracket, ax1, ax2)
         ax2.plot(
             [p538_lag, p538_lag],
             [y_bracket_ax2, p538_value],
-            color=THEME.F38_COLOR,
+            color=CLR_538,
             linestyle=":",
             lw=1.2,
             alpha=0.7,
         )
         ax2.plot(
-            [p538_lag], [p538_value], marker="o", color=THEME.F38_COLOR, markersize=5
+            [p538_lag], [p538_value], marker="o", color=CLR_538, markersize=5
         )
 
     ax1.set_xlabel("Days from event")
@@ -515,17 +516,21 @@ def plot_indexed_event_study(pm_swing, p538_swing, show=False):
 def main():
     """Generate all event-response figures."""
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-    apply_style()
+    configure_plot_style()
 
     print("Loading data...")
-    polymarket, fivethirtyeight = load_data()
+    polymarket, fivethirtyeight = load_daily_data(PROCESSED_DIR)
 
     print("Computing swing-state averages...")
-    pm_swing = compute_swing_average(polymarket)
-    p538_swing = compute_538_swing_timeseries(fivethirtyeight)
+    pm_swing = compute_swing_average(polymarket, SWING_STATES)
+    p538_swing = build_fivethirtyeight_swing_series(
+        fivethirtyeight, SWING_STATES, OVERLAP_CUTOFF
+    )
 
     print("Building reaction summary...")
-    summary = build_reaction_summary(polymarket, fivethirtyeight)
+    summary = build_reaction_summary(
+        EVENTS, polymarket, fivethirtyeight, SWING_STATES, OVERLAP_CUTOFF
+    )
 
     print("Generating plots...")
     plot_event_timeline(pm_swing, p538_swing)
