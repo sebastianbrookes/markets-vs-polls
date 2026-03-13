@@ -26,3 +26,5 @@ data/raw/**/*.xlsx
 # assignment-specific
 deliverables/
 /prelim-info/
+
+.vscode/
