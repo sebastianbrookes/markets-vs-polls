@@ -56,27 +56,18 @@ OVERLAP_CUTOFF = "2024-09-12"
 MIN_POST_COVERAGE = 1.0
 RULE_WIDTH = 65
 
-
-def add_project_root_to_path():
-    """
-    Adds the project root to sys.path so src imports work correctly.
-    """
-    project_root = str(Path(__file__).resolve().parents[3])
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-
-
-add_project_root_to_path()
+_project_root = str(Path(__file__).resolve().parents[3])
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
 from src.clean.utils import PROCESSED_DIR, SWING_STATES
 
 
 def load_daily_data(processed_dir):
-    """
-    Given a processed data directory, loads the daily analysis data.
+    """Load processed daily CSVs for Polymarket and 538.
 
-    Returns a tuple with Polymarket daily data and FiveThirtyEight
-    state polling data with the national row removed.
+    Returns (polymarket_df, state_polls_df) with the national
+    538 row removed.
     """
     polymarket_df = pd.read_csv(
         processed_dir / "polymarket_daily.csv",
@@ -91,11 +82,7 @@ def load_daily_data(processed_dir):
 
 
 def load_hourly_data(processed_dir):
-    """
-    Given a processed data directory, loads hourly Polymarket data.
-
-    Returns a DataFrame with a parsed UTC datetime column.
-    """
+    """Load Polymarket hourly data with proper datetime parsing."""
     hourly_df = pd.read_csv(processed_dir / "polymarket_hourly.csv")
     hourly_df["date_utc"] = pd.to_datetime(hourly_df["date_utc"])
     return hourly_df
@@ -107,179 +94,116 @@ def compute_swing_average(
     date_column="date",
     value_column="trump_lead",
 ):
-    """
-    Given a state-level DataFrame, computes the daily swing-state mean.
+    """Average trump_lead across swing states per date.
 
-    Returns a Series indexed by date with the average Trump lead
-    across the requested swing states.
+    Returns a Series indexed by date.
     """
     swing_df = dataframe[dataframe["state"].isin(swing_states)].copy()
     return swing_df.groupby(date_column)[value_column].mean().sort_index()
 
 
 def compute_hourly_swing_average(hourly_df, swing_states):
-    """
-    Given hourly state-level Polymarket data, computes the hourly
-    swing-state mean Trump lead.
-
-    Returns a Series indexed by date_utc.
-    """
+    """Average trump_lead across swing states per hour (date_utc)."""
     swing_df = hourly_df[hourly_df["state"].isin(swing_states)].copy()
     return swing_df.groupby("date_utc")["trump_lead"].mean().sort_index()
 
 
 def get_latest_state_snapshot(polls_df, as_of_date):
-    """
-    Given FiveThirtyEight polling data and a cutoff date, finds the
-    latest available row for each state on or before that date.
-
-    Returns a DataFrame with one row per state.
-
-    This is the key step for manual forward-fill: for each state,
-    keep the most recent poll at or before the target date.
-    """
+    """Forward-fill 538: latest row per state on or before as_of_date."""
     eligible_rows = polls_df[polls_df["date"] <= pd.Timestamp(as_of_date)]
     sorted_rows = eligible_rows.sort_values(["state", "date"])
     return sorted_rows.drop_duplicates(subset="state", keep="last")
 
 
-def collect_fivethirtyeight_records(polls_df, swing_states, all_dates):
-    """
-    Given FiveThirtyEight polling data and a date range, builds one
-    forward-filled swing-state average record per day.
+def build_fivethirtyeight_swing_series(polls_df, swing_states, overlap_cutoff):
+    """Build a daily swing-state average for 538, forward-filling gaps.
 
-    Returns a list of dictionaries.
-
-    Because 538 polls are irregular, we rebuild a daily series by
-    taking a daily snapshot of each state's latest available value.
-    """
-    records = []
-    for current_date in all_dates:
-        snapshot_df = get_latest_state_snapshot(polls_df, current_date)
-        swing_snapshot_df = snapshot_df[snapshot_df["state"].isin(swing_states)]
-        if not swing_snapshot_df.empty:
-            records.append(
-                {
-                    "date": current_date,
-                    "trump_lead": swing_snapshot_df["trump_lead"].mean(),
-                }
-            )
-    return records
-
-
-def build_fivethirtyeight_swing_series(
-    polls_df,
-    swing_states,
-    overlap_cutoff,
-):
-    """
-    Builds a daily swing-state time series for FiveThirtyEight.
-
-    For each day in the overlap window, this function forward-fills by
-    taking the latest available poll value for each swing state.
-
-    Returns a Series indexed by date.
+    For each date in the range, take the latest available value per
+    swing state, then average across states. Returns a Series indexed
+    by date.
     """
     swing_polls_df = polls_df[polls_df["state"].isin(swing_states)]
     start_date = swing_polls_df["date"].min()
     end_date = pd.Timestamp(overlap_cutoff)
     all_dates = pd.date_range(start_date, end_date, freq="D")
-    records = collect_fivethirtyeight_records(
-        polls_df,
-        swing_states,
-        all_dates,
-    )
+
+    records = []
+    for current_date in all_dates:
+        snapshot_df = get_latest_state_snapshot(polls_df, current_date)
+        swing_snapshot_df = snapshot_df[snapshot_df["state"].isin(swing_states)]
+        if not swing_snapshot_df.empty:
+            records.append({
+                "date": current_date,
+                "trump_lead": swing_snapshot_df["trump_lead"].mean(),
+            })
 
     return pd.Series(
-        [record["trump_lead"] for record in records],
-        index=pd.DatetimeIndex([record["date"] for record in records]),
+        [r["trump_lead"] for r in records],
+        index=pd.DatetimeIndex([r["date"] for r in records]),
     )
 
 
-def get_event_windows(event_date, pre_days, post_days):
-    """
-    Given an event date and window lengths, returns the date ranges
-    used for the baseline, immediate reaction, and settled reaction.
-    """
-    event_timestamp = pd.Timestamp(event_date)
-    baseline_window = (
-        event_timestamp - pd.Timedelta(days=pre_days),
-        event_timestamp - pd.Timedelta(days=1),
-    )
-    immediate_window = (
-        event_timestamp,
-        event_timestamp + pd.Timedelta(days=1),
-    )
-    settled_window = (
-        event_timestamp + pd.Timedelta(days=2),
-        event_timestamp + pd.Timedelta(days=post_days),
-    )
-    return baseline_window, immediate_window, settled_window
+# ---------------------------------------------------------------------------
+# Event reaction computation
+# ---------------------------------------------------------------------------
 
-
-def select_series_window(series, start_date, end_date):
-    """
-    Given a dated Series and a date range, returns the values inside
-    that inclusive range.
-    """
-    mask = (series.index >= start_date) & (series.index <= end_date)
-    return series[mask]
-
-
-def calculate_mean_or_nan(series):
-    """
-    Given a Series, returns its mean or NaN when it is empty.
-    """
-    if len(series) == 0:
-        return np.nan
-    return series.mean()
-
-
-def compute_shift(baseline, settled):
-    """
-    Given a baseline value and a settled value, returns the post-event
-    shift or NaN if either value is missing.
-    """
-    if np.isnan(baseline) or np.isnan(settled):
-        return np.nan
-    return settled - baseline
-
-
-def compute_post_coverage_stats(settled_values, settled_window):
-    """
-    Given settled-window values, computes post-event coverage stats.
-
-    Returns a tuple with the number of expected days, gap days, and
-    coverage share.
-    """
-    settled_start, settled_end = settled_window
-    expected_days = (settled_end - settled_start).days + 1
-    data_gap_days = expected_days - len(settled_values)
-    post_coverage = len(settled_values) / expected_days
-    return expected_days, data_gap_days, post_coverage
-
-
-def summarize_reaction_windows(
-    baseline_values,
-    immediate_values,
-    settled_values,
-    settled_window,
-    min_post_coverage,
+def compute_event_reaction(
+    swing_series,
+    event_date,
+    pre_days=3,
+    post_days=7,
+    min_post_coverage=MIN_POST_COVERAGE,
 ):
-    """Computes summary metrics for one event window.
+    """Compute baseline, immediate, and settled reaction around an event.
 
-    An event is marked usable only if it has pre-event data and enough
-    settled-window coverage after the event.
+    Parameters
+    ----------
+    swing_series : pd.Series
+        Daily swing-state average trump_lead, indexed by date.
+    event_date : str or pd.Timestamp
+        Date of the event.
+    pre_days : int
+        Number of days before event for baseline window.
+    post_days : int
+        Number of days after event for settled window.
+    min_post_coverage : float
+        Minimum fraction of post-event days required.
+
+    Returns
+    -------
+    dict with keys: baseline, immediate, settled, shift, has_data,
+                    n_pre, n_post, data_gap_days, post_coverage
     """
-    baseline = calculate_mean_or_nan(baseline_values)
-    immediate = calculate_mean_or_nan(immediate_values)
-    settled = calculate_mean_or_nan(settled_values)
-    shift = compute_shift(baseline, settled)
-    _, data_gap_days, post_coverage = compute_post_coverage_stats(
-        settled_values,
-        settled_window,
+    ev = pd.Timestamp(event_date)
+    pre_start = ev - pd.Timedelta(days=pre_days)
+    pre_end = ev - pd.Timedelta(days=1)
+    post_start = ev + pd.Timedelta(days=2)
+    post_end = ev + pd.Timedelta(days=post_days)
+
+    pre_vals = swing_series[
+        (swing_series.index >= pre_start) & (swing_series.index <= pre_end)
+    ]
+    imm_vals = swing_series[
+        (swing_series.index >= ev)
+        & (swing_series.index <= ev + pd.Timedelta(days=1))
+    ]
+    post_vals = swing_series[
+        (swing_series.index >= post_start) & (swing_series.index <= post_end)
+    ]
+
+    baseline = pre_vals.mean() if len(pre_vals) > 0 else np.nan
+    immediate = imm_vals.mean() if len(imm_vals) > 0 else np.nan
+    settled = post_vals.mean() if len(post_vals) > 0 else np.nan
+    shift = (
+        settled - baseline
+        if not (np.isnan(settled) or np.isnan(baseline))
+        else np.nan
     )
-    has_data = len(baseline_values) > 0 and post_coverage >= min_post_coverage
+
+    expected_days = (post_end - post_start).days + 1
+    data_gap_days = expected_days - len(post_vals)
+    post_coverage = len(post_vals) / expected_days
+    has_data = len(pre_vals) > 0 and post_coverage >= min_post_coverage
 
     return {
         "baseline": baseline,
@@ -287,84 +211,32 @@ def summarize_reaction_windows(
         "settled": settled,
         "shift": shift,
         "has_data": has_data,
-        "n_pre": len(baseline_values),
-        "n_post": len(settled_values),
+        "n_pre": len(pre_vals),
+        "n_post": len(post_vals),
         "data_gap_days": data_gap_days,
         "post_coverage": post_coverage,
     }
 
 
-def compute_event_reaction(
-    swing_series,
-    event_date,
-    pre_days=3,
-    post_days=7,
-    min_post_coverage=1.0,
-):
-    """Computes baseline and post-event reaction statistics."""
-    baseline_window, immediate_window, settled_window = get_event_windows(
-        event_date,
-        pre_days,
-        post_days,
-    )
-    baseline_values = select_series_window(swing_series, *baseline_window)
-    immediate_values = select_series_window(swing_series, *immediate_window)
-    settled_values = select_series_window(swing_series, *settled_window)
+def _zeroed_event_window(swing_series, event_date, pre_days, post_days):
+    """Extract an event window, relabel as day offsets, zero from Day -1.
 
-    return summarize_reaction_windows(
-        baseline_values,
-        immediate_values,
-        settled_values,
-        settled_window,
-        min_post_coverage,
-    )
-
-
-def build_relative_window(swing_series, event_date, pre_days, post_days):
+    Returns a Series indexed by integer day offset with Day -1 = 0,
+    or an empty Series if Day -1 has no data.
     """
-    Given a swing-state Series and an event date, extracts the event
-    window and relabels the index as integer day offsets.
+    ev = pd.Timestamp(event_date)
+    start = ev - pd.Timedelta(days=pre_days)
+    end = ev + pd.Timedelta(days=post_days)
 
-    Returns a Series indexed by days relative to the event.
-    """
-    event_timestamp = pd.Timestamp(event_date)
-    start_date = event_timestamp - pd.Timedelta(days=pre_days)
-    end_date = event_timestamp + pd.Timedelta(days=post_days)
-    window_series = select_series_window(swing_series, start_date, end_date)
-    day_offsets = (window_series.index - event_timestamp).days
-    relative_window = window_series.copy()
-    relative_window.index = day_offsets
-    return relative_window
+    window = swing_series[
+        (swing_series.index >= start) & (swing_series.index <= end)
+    ].copy()
+    window.index = (window.index - ev).days
 
-
-def zero_from_day_before(relative_window):
-    """
-    Given a relative event window, subtracts the Day -1 value from the
-    whole window.
-
-    Returns an empty Series if Day -1 is missing.
-
-    Day -1 is our event baseline so every event window is compared
-    from a common starting point.
-    """
-    if -1 not in relative_window.index:
+    if -1 not in window.index:
         return pd.Series(dtype=float)
 
-    baseline = relative_window.loc[-1]
-    return relative_window - baseline
-
-
-def normalize_indexed_window(indexed_window, swing_series):
-    """
-    Given an indexed event window, divides it by the standard
-    deviation of daily changes when possible.
-
-    Returns a Series in normalized units.
-    """
-    daily_volatility = swing_series.diff().dropna().std()
-    if daily_volatility > 0:
-        return indexed_window / daily_volatility
-    return indexed_window
+    return window - window.loc[-1]
 
 
 def compute_indexed_window(
@@ -374,22 +246,20 @@ def compute_indexed_window(
     post_days=10,
     normalize=True,
 ):
-    """
-    Builds an event-centered window of day offsets and changes from
-    Day -1.
+    """Zero-indexed window around an event for small-multiple plotting.
 
-    Returns a Series indexed by integer day offset.
+    Returns a Series indexed by integer day offset, values = change
+    from Day -1. If normalize=True, divides by daily volatility to
+    produce z-scored changes.
     """
-    relative_window = build_relative_window(
-        swing_series,
-        event_date,
-        pre_days,
-        post_days,
-    )
-    indexed_window = zero_from_day_before(relative_window)
-    if indexed_window.empty or not normalize:
-        return indexed_window
-    return normalize_indexed_window(indexed_window, swing_series)
+    window = _zeroed_event_window(swing_series, event_date, pre_days, post_days)
+    if window.empty or not normalize:
+        return window
+
+    daily_vol = swing_series.diff().dropna().std()
+    if daily_vol > 0:
+        window = window / daily_vol
+    return window
 
 
 def compute_raw_indexed_window(
@@ -399,30 +269,22 @@ def compute_raw_indexed_window(
     post_days=10,
     scale=1,
 ):
-    """
-    Builds an event-centered window in raw units instead of z-scores.
+    """Zero-indexed window in raw units (not z-scored).
 
-    Returns a Series indexed by integer day offset.
+    Parameters
+    ----------
+    scale : float
+        Multiply values by this factor (e.g. 100 to convert
+        probability to percentage points).
     """
-    relative_window = build_relative_window(
-        swing_series,
-        event_date,
-        pre_days,
-        post_days,
-    )
-    indexed_window = zero_from_day_before(relative_window)
-    return indexed_window * scale
+    window = _zeroed_event_window(swing_series, event_date, pre_days, post_days)
+    return window * scale
 
 
 def detect_price_in_day(window_series, threshold_pct=0.90):
-    """
-    Given a zeroed event window, finds the first post-event day that
-    reaches the requested share of the total Day 10 move.
-
-    Returns an integer day offset or None.
-
-    We define reaction speed as the first day that reaches 90% of the
-    final Day 10 move, with sign-aware logic for up vs. down moves.
+    """Find the first day >= 0 where the source reaches threshold_pct
+    of its total move (Day 10 value). Returns the integer day offset,
+    or None if never crossed.
     """
     if window_series.empty or 10 not in window_series.index:
         return None
@@ -444,133 +306,21 @@ def detect_price_in_day(window_series, threshold_pct=0.90):
 
 
 def classify_direction(shift, expected_direction):
-    """
-    Given an observed shift and an expected direction, labels whether
-    the result matched the expectation.
-
-    For "neutral" events, shifts within +/-0.01 are treated as no
-    meaningful movement.
-    """
+    """Classify whether the shift matched the expected direction."""
     if np.isnan(shift):
         return "no data"
-
     if expected_direction == "neutral":
-        if abs(shift) < 0.01:
-            return "correct"
-        return "overreaction"
-
+        return "correct" if abs(shift) < 0.01 else "overreaction"
     if expected_direction == "pro-Trump":
-        if shift > 0:
-            return "correct"
-        return "wrong"
-
+        return "correct" if shift > 0 else "wrong"
     if expected_direction == "pro-Harris":
-        if shift < 0:
-            return "correct"
-        return "wrong"
-
+        return "correct" if shift < 0 else "wrong"
     return "unknown"
 
 
-def build_source_series(polymarket_df, polls_df, swing_states, overlap_cutoff):
-    """
-    Given the two source DataFrames, builds one swing-state Series for
-    each source.
-
-    Returns a dictionary mapping source names to Series objects.
-    """
-    return {
-        "Polymarket": compute_swing_average(polymarket_df, swing_states),
-        "538": build_fivethirtyeight_swing_series(
-            polls_df,
-            swing_states,
-            overlap_cutoff,
-        ),
-    }
-
-
-def build_summary_row(event, source_name, swing_series, min_post_coverage):
-    """Builds one summary row for an event-source pair."""
-    reaction = compute_event_reaction(
-        swing_series,
-        event["date"],
-        min_post_coverage=min_post_coverage,
-    )
-    return {
-        "event": event["name"],
-        "event_date": event["date"],
-        "source": source_name,
-        "expected": event["expected_direction"],
-        "baseline": reaction["baseline"],
-        "immediate": reaction["immediate"],
-        "settled": reaction["settled"],
-        "shift": reaction["shift"],
-        "direction_match": classify_direction(
-            reaction["shift"],
-            event["expected_direction"],
-        ),
-        "has_data": reaction["has_data"],
-        "n_pre": reaction["n_pre"],
-        "n_post": reaction["n_post"],
-        "data_gap_days": reaction["data_gap_days"],
-        "post_coverage": reaction["post_coverage"],
-    }
-
-
-def build_summary_rows(events, source_series, min_post_coverage):
-    """
-    Given the event list and source time series, builds summary rows
-    for every event-source pair.
-
-    Returns a list of dictionaries.
-    """
-    rows = []
-    for event in events:
-        for source_name, swing_series in source_series.items():
-            row = build_summary_row(
-                event,
-                source_name,
-                swing_series,
-                min_post_coverage,
-            )
-            rows.append(row)
-    return rows
-
-
-def add_shift_z_scores(summary_df, source_series):
-    """
-    Given the event summary table, adds a z-scored shift column based
-    on each source's background day-to-day volatility.
-
-    Returns the updated DataFrame.
-    """
-    background_std = {}
-    for source_name, swing_series in source_series.items():
-        background_std[source_name] = swing_series.diff().dropna().std()
-
-    summary_df["shift_z"] = summary_df.apply(
-        lambda row: compute_shift_z_score(row, background_std),
-        axis=1,
-    )
-    return summary_df
-
-
-def compute_shift_z_score(row, background_std):
-    """
-    Given one summary row and a dictionary of source volatilities,
-    computes the z-scored shift for that row.
-
-    Returns a float or NaN.
-    """
-    source_name = row["source"]
-    shift = row["shift"]
-    source_std = background_std.get(source_name, 0)
-
-    if np.isnan(shift) or source_std == 0:
-        return np.nan
-
-    return shift / source_std
-
+# ---------------------------------------------------------------------------
+# Summary builder
+# ---------------------------------------------------------------------------
 
 def build_reaction_summary(
     events,
@@ -580,65 +330,62 @@ def build_reaction_summary(
     overlap_cutoff,
     min_post_coverage=1.0,
 ):
-    """
-    Given the source DataFrames, builds a complete event response
-    summary table.
+    """Build a DataFrame summarizing reactions for all events x both sources."""
+    source_series = {
+        "Polymarket": compute_swing_average(polymarket_df, swing_states),
+        "538": build_fivethirtyeight_swing_series(
+            polls_df, swing_states, overlap_cutoff,
+        ),
+    }
 
-    Returns a DataFrame with one row per event-source pair.
-    """
-    source_series = build_source_series(
-        polymarket_df,
-        polls_df,
-        swing_states,
-        overlap_cutoff,
+    rows = []
+    for event in events:
+        for source_name, swing in source_series.items():
+            reaction = compute_event_reaction(
+                swing, event["date"], min_post_coverage=min_post_coverage,
+            )
+            rows.append({
+                "event": event["name"],
+                "event_date": event["date"],
+                "source": source_name,
+                "expected": event["expected_direction"],
+                "baseline": reaction["baseline"],
+                "immediate": reaction["immediate"],
+                "settled": reaction["settled"],
+                "shift": reaction["shift"],
+                "direction_match": classify_direction(
+                    reaction["shift"], event["expected_direction"],
+                ),
+                "has_data": reaction["has_data"],
+                "n_pre": reaction["n_pre"],
+                "n_post": reaction["n_post"],
+                "data_gap_days": reaction["data_gap_days"],
+                "post_coverage": reaction["post_coverage"],
+            })
+
+    df = pd.DataFrame(rows)
+
+    # z-score shifts by each source's background daily volatility
+    bg_std = {
+        name: s.diff().dropna().std()
+        for name, s in source_series.items()
+    }
+    df["shift_z"] = df.apply(
+        lambda r: r["shift"] / bg_std[r["source"]]
+        if bg_std.get(r["source"], 0) and not np.isnan(r["shift"])
+        else np.nan,
+        axis=1,
     )
-    summary_rows = build_summary_rows(
-        events,
-        source_series,
-        min_post_coverage,
-    )
-    summary_df = pd.DataFrame(summary_rows)
-    return add_shift_z_scores(summary_df, source_series)
+
+    return df
 
 
-def print_rule(rule_width):
-    """
-    Prints a horizontal separator line.
-    """
-    print("─" * rule_width)
+# ---------------------------------------------------------------------------
+# CLI output
+# ---------------------------------------------------------------------------
 
-
-def print_box_header(title, rule_width):
-    """
-    Prints a boxed section header.
-    """
-    print("\n" + "=" * rule_width)
-    print(f"  {title}")
-    print("=" * rule_width)
-
-
-def format_shift(row):
-    """
-    Given a summary row, returns a formatted shift string.
-    """
-    if np.isnan(row["shift"]):
-        return "N/A"
-    return f"{row['shift']:+.4f}"
-
-
-def format_gap_text(row):
-    """
-    Given a summary row, returns formatted gap-day text.
-    """
-    if row["data_gap_days"] > 0:
-        return f"  ({row['data_gap_days']} gap days)"
-    return ""
-
-
-def print_source_result(row):
-    """
-    Prints one formatted result line for a source.
-    """
+def _print_source_result(row):
+    """Print one formatted result line for a source."""
     if not row["has_data"]:
         print(
             f"  {row['source']:12s}: INSUFFICIENT DATA "
@@ -647,88 +394,78 @@ def print_source_result(row):
         )
         return
 
-    shift_text = format_shift(row)
-    match_text = row["direction_match"].upper()
-    gap_text = format_gap_text(row)
+    shift_str = f"{row['shift']:+.4f}" if not np.isnan(row["shift"]) else "N/A"
+    match_str = row["direction_match"].upper()
+    gap_str = (
+        f"  ({row['data_gap_days']} gap days)" if row["data_gap_days"] > 0 else ""
+    )
 
     print(
         f"  {row['source']:12s}: baseline={row['baseline']:.4f}  "
         f"settled={row['settled']:.4f}  "
-        f"shift={shift_text}  [{match_text}]{gap_text}"
+        f"shift={shift_str}  [{match_str}]{gap_str}"
     )
 
 
-def get_event_row(summary_df, event_name, source_name):
-    """
-    Given the summary table, returns the row for one event-source pair.
-    """
-    row_df = summary_df[
-        (summary_df["event"] == event_name) & (summary_df["source"] == source_name)
-    ]
-    return row_df.iloc[0]
-
-
-def print_event_summary(event, summary_df, rule_width):
-    """
-    Prints the formatted comparison for one event.
-    """
-    print_rule(rule_width)
+def _print_event_summary(event, summary_df):
+    """Print the formatted comparison for one event."""
+    print("─" * RULE_WIDTH)
     print(
         f"  {event['name']}  ({event['date']})  "
         f"— expected: {event['expected_direction']}"
     )
     print(f"  {event['reason']}")
-    print_rule(rule_width)
+    print("─" * RULE_WIDTH)
 
     for source_name in ["Polymarket", "538"]:
-        event_row = get_event_row(summary_df, event["name"], source_name)
-        print_source_result(event_row)
+        row = summary_df[
+            (summary_df["event"] == event["name"])
+            & (summary_df["source"] == source_name)
+        ].iloc[0]
+        _print_source_result(row)
 
     print()
 
 
-def print_scorecard(summary_df, rule_width):
-    """
-    Prints the overall direction-match scorecard for each source.
-    """
-    print_box_header("SCORECARD", rule_width)
+def _print_scorecard(summary_df):
+    """Print the overall direction-match scorecard for each source."""
+    print("\n" + "=" * RULE_WIDTH)
+    print("  SCORECARD")
+    print("=" * RULE_WIDTH)
     for source_name in ["Polymarket", "538"]:
-        source_rows = summary_df[summary_df["source"] == source_name]
-        eligible_rows = source_rows[source_rows["has_data"]]
-        correct_count = (eligible_rows["direction_match"] == "correct").sum()
-        eligible_count = len(eligible_rows)
-        available_count = int(source_rows["has_data"].sum())
-        total_gap_days = int(source_rows["data_gap_days"].sum())
-
+        src_rows = summary_df[summary_df["source"] == source_name]
+        eligible = src_rows[src_rows["has_data"]]
+        n_correct = (eligible["direction_match"] == "correct").sum()
+        n_eligible = len(eligible)
+        n_with_data = int(src_rows["has_data"].sum())
+        total_gap = int(src_rows["data_gap_days"].sum())
         print(
-            f"  {source_name:12s}: {correct_count}/{eligible_count} "
-            f"correct direction  | {available_count}/{len(source_rows)} "
-            f"events with data  | {total_gap_days} total gap days"
+            f"  {source_name:12s}: {n_correct}/{n_eligible} correct direction  "
+            f"| {n_with_data}/{len(src_rows)} events with data  "
+            f"| {total_gap} total gap days"
         )
 
 
 def main():
-    """
-    Loads the processed data, computes event responses, and prints the
-    analysis report.
-    """
-    print_box_header("EVENT RESPONSE ANALYSIS: POLYMARKET vs. 538", RULE_WIDTH)
+    """Load data, compute event responses, and print the analysis report."""
+    print("\n" + "=" * RULE_WIDTH)
+    print("  EVENT RESPONSE ANALYSIS: POLYMARKET vs. 538")
+    print("=" * RULE_WIDTH)
 
     polymarket_df, polls_df = load_daily_data(PROCESSED_DIR)
     summary_df = build_reaction_summary(
-        EVENTS,
-        polymarket_df,
-        polls_df,
-        SWING_STATES,
-        OVERLAP_CUTOFF,
-        MIN_POST_COVERAGE,
+        EVENTS, polymarket_df, polls_df,
+        SWING_STATES, OVERLAP_CUTOFF, MIN_POST_COVERAGE,
     )
 
     for event in EVENTS:
-        print_event_summary(event, summary_df, RULE_WIDTH)
+        _print_event_summary(event, summary_df)
 
-    print_scorecard(summary_df, RULE_WIDTH)
-    print_box_header("Analysis complete.", RULE_WIDTH)
+    _print_scorecard(summary_df)
+
+    print("\n" + "=" * RULE_WIDTH)
+    print("  Analysis complete.")
+    print("=" * RULE_WIDTH + "\n")
 
 
 if __name__ == "__main__":
