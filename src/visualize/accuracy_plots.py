@@ -53,12 +53,15 @@ CLR_TEXT = "#333333"
 CLR_SUBTEXT = "#666666"
 CLR_GRID = "#EBEBEB"
 
-FONTS = ["Avenir Next","DejaVu Sans", "sans-serif"]
+FONTS = ["Avenir Next", "DejaVu Sans", "sans-serif"]
 DPI = 300
 
 
 def configure_plot_style():
-    """Apply a style baseline for all figures."""
+    """
+    Applies a consistent style baseline to all subsequent figures,
+    configuring font family, DPI, colors, and axis/label sizes.
+    """
     plt.style.use("default")
     plt.rcParams.update(
         {
@@ -87,7 +90,10 @@ def configure_plot_style():
 
 
 def style_axis(ax, hide_x=False, hide_y=False):
-    """Applies clean styles to an axis."""
+    """
+    Given a matplotlib axis, applies clean styling by removing spines,
+    configuring tick marks, and optionally hiding the x or y axis.
+    """
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
@@ -110,7 +116,10 @@ def style_axis(ax, hide_x=False, hide_y=False):
 
 
 def add_titles(fig, title, subtitle, title_y=0.98, subtitle_y=0.92):
-    """Adds left-aligned title and subtitle to the figure."""
+    """
+    Given a figure, a title string, and a subtitle string, adds
+    left-aligned title and subtitle text to the figure.
+    """
     fig.text(
         0.04, title_y, title, fontsize=15, fontweight="bold", color=CLR_TEXT, ha="left"
     )
@@ -118,7 +127,10 @@ def add_titles(fig, title, subtitle, title_y=0.98, subtitle_y=0.92):
 
 
 def annotate_bars(ax, bars, color, bold=False):
-    """Add percentage labels to the top of bars."""
+    """
+    Given an axis and a collection of bars, adds percentage labels
+    above each bar in the specified color.
+    """
     for bar in bars:
         height = bar.get_height()
         ax.text(
@@ -134,7 +146,10 @@ def annotate_bars(ax, bars, color, bold=False):
 
 
 def save_figure(fig, filename, show=False):
-    """Display or save a figure to the accuracy figures directory."""
+    """
+    Given a figure and a filename, saves the figure to the accuracy
+    figures directory, or displays it interactively if show is True.
+    """
     if show:
         plt.show()
     else:
@@ -150,7 +165,11 @@ def save_figure(fig, filename, show=False):
 
 
 def plot_timeseries_crossover(ts, show=False):
-    """Plot daily Polymarket vs FiveThirtyEight accuracy over time."""
+    """
+    Given a time-series DataFrame, plots daily Polymarket and
+    FiveThirtyEight accuracy over time with period shading and
+    event annotations.
+    """
     fig, ax = plt.subplots(figsize=(10, 5.5))
     fig.subplots_adjust(top=0.82)
 
@@ -238,7 +257,10 @@ def plot_timeseries_crossover(ts, show=False):
 
 
 def plot_head_to_head(metrics, show=False):
-    """Plot grouped bar chart comparing per-state accuracy on Sept 12."""
+    """
+    Given a metrics DataFrame, plots a grouped bar chart comparing
+    Polymarket and FiveThirtyEight per-state accuracy on Sept 12.
+    """
     groups = metrics["group"].tolist()
     pm_vals = metrics["pm_pct"].to_numpy()
     p538_vals = metrics["p538_pct"].to_numpy()
@@ -296,8 +318,11 @@ def plot_head_to_head(metrics, show=False):
 
 
 def plot_polymarket_trajectory(metrics, show=False):
-    """Plot Polymarket accuracy at three snapshots
-    leading up to Election Day."""
+    """
+    Given a metrics DataFrame, plots Polymarket accuracy across three
+    snapshots leading up to Election Day for all states and swing
+    states.
+    """
     labels = metrics["label"].tolist()
     all_vals = metrics["all_pct"].to_numpy()
     swing_vals = metrics["swing_pct"].to_numpy()
@@ -355,7 +380,10 @@ def plot_polymarket_trajectory(metrics, show=False):
 
 
 def plot_ev_comparison(metrics, show=False):
-    """Plot stacked bars comparing predicted vs actual Electoral Vote splits."""
+    """
+    Given a metrics DataFrame, plots stacked bars comparing predicted
+    versus actual Electoral Vote splits as normalized percentages.
+    """
     labels = metrics["label"].tolist()
     trump_pct = metrics["trump_pct"].to_numpy()
     harris_pct = metrics["harris_pct"].to_numpy()
@@ -439,7 +467,10 @@ def plot_ev_comparison(metrics, show=False):
 
 
 def main():
-    """Load data, compute metrics, and generate all four accuracy plots."""
+    """
+    Loads data, computes all accuracy metrics, and generates the four
+    accuracy plots to the figures/accuracy/ directory.
+    """
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     configure_plot_style()
 
