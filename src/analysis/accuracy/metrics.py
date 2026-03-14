@@ -44,18 +44,9 @@ PERIODS = [
 
 
 def load_data(data_dir):
-    """
-    Load Polymarket, 538, and FEC data from CSVs.
+    """Load Polymarket, 538, and FEC CSVs from data_dir.
 
-    Parameters
-    ----------
-    data_dir : Path
-        Directory containing processed CSV files.
-
-    Returns
-    -------
-    tuple of DataFrame
-        (polymarket, polls_538, fec_results).
+    Returns (pm, p538, fec) with the 538 national row removed.
     """
     pm = pd.read_csv(
         data_dir / "polymarket_daily.csv",
@@ -72,40 +63,16 @@ def load_data(data_dir):
 
 
 def latest_per_state(p538, as_of):
-    """
-    Return the most recent 538 row per state on or
-    before a given date.
-
-    Parameters
-    ----------
-    p538 : DataFrame
-        FiveThirtyEight polling data.
-    as_of : str
-        Date cutoff in YYYY-MM-DD format.
-
-    Returns
-    -------
-    DataFrame
-        One row per state with the latest data.
-    """
+    """Forward-fill 538: latest row per state on or before as_of."""
     mask = p538["date"] <= pd.Timestamp(as_of)
     subset = p538[mask].sort_values(["state", "date"])
     return subset.drop_duplicates(subset="state", keep="last")
 
 
 def predict_winner_pm(df):
-    """
-    Add predicted_winner column from Polymarket odds.
+    """Add predicted_winner column from Polymarket trump_prob > 0.5.
 
-    Parameters
-    ----------
-    df : DataFrame
-        Must contain a trump_prob column.
-
-    Returns
-    -------
-    DataFrame
-        Copy with predicted_winner column added.
+    Ties at exactly 0.50 are treated as Harris calls.
     """
     df = df.copy()
     df["predicted_winner"] = df["trump_prob"].apply(
@@ -115,19 +82,7 @@ def predict_winner_pm(df):
 
 
 def predict_winner_538(df):
-    """
-    Add predicted_winner column from 538 poll shares.
-
-    Parameters
-    ----------
-    df : DataFrame
-        Must contain trump_pct and dem_pct columns.
-
-    Returns
-    -------
-    DataFrame
-        Copy with predicted_winner column added.
-    """
+    """Add predicted_winner column from 538 trump_pct vs dem_pct."""
     df = df.copy()
     df["predicted_winner"] = df.apply(
         lambda row: "Trump" if row["trump_pct"] > row["dem_pct"] else "Harris",
@@ -137,22 +92,8 @@ def predict_winner_538(df):
 
 
 def pm_snapshot(pm, as_of, states=None):
-    """
-    Return Polymarket predictions for a single date.
-
-    Parameters
-    ----------
-    pm : DataFrame
-        Polymarket daily data.
-    as_of : str
-        Date in YYYY-MM-DD format.
-    states : list of str or None
-        States to include. None means all.
-
-    Returns
-    -------
-    DataFrame
-        Filtered snapshot with predicted_winner.
+    """Return Polymarket predictions for a single date, optionally
+    filtered to states.
     """
     snapshot = predict_winner_pm(pm[pm["date"] == pd.Timestamp(as_of)])
     if states is not None:
@@ -161,22 +102,8 @@ def pm_snapshot(pm, as_of, states=None):
 
 
 def p538_snapshot(p538, as_of, states=None):
-    """
-    Return 538 predictions as of a given date.
-
-    Parameters
-    ----------
-    p538 : DataFrame
-        FiveThirtyEight polling data.
-    as_of : str
-        Date in YYYY-MM-DD format.
-    states : list of str or None
-        States to include. None means all.
-
-    Returns
-    -------
-    DataFrame
-        Filtered snapshot with predicted_winner.
+    """Return forward-filled 538 predictions as of a date, optionally
+    filtered to states.
     """
     snapshot = predict_winner_538(latest_per_state(p538, as_of))
     if states is not None:
@@ -185,22 +112,9 @@ def p538_snapshot(p538, as_of, states=None):
 
 
 def compute_accuracy(snapshot, fec_winners, states=None):
-    """
-    Compare predicted winners to actual results.
+    """Compare predicted winners to actual results.
 
-    Parameters
-    ----------
-    snapshot : DataFrame
-        Must have state and predicted_winner columns.
-    fec_winners : Series
-        Actual winners indexed by state.
-    states : list of str or None
-        States to evaluate. None means all.
-
-    Returns
-    -------
-    dict
-        Keys: correct, n_states, pct.
+    Returns dict with keys: correct, n_states, pct.
     """
     if states is None:
         subset = snapshot
@@ -229,23 +143,10 @@ def compute_accuracy(snapshot, fec_winners, states=None):
 
 
 def compute_ev_share(snapshot, fec, states=None):
-    """
-    Compute Electoral Vote share from predicted winners.
+    """Compute Trump/Harris Electoral Vote share from predicted winners.
 
-    Parameters
-    ----------
-    snapshot : DataFrame
-        Must have state and predicted_winner columns.
-    fec : DataFrame
-        Must have state and electoral_votes columns.
-    states : list of str or None
-        States to include. None means all.
-
-    Returns
-    -------
-    dict
-        Keys: trump_pct, harris_pct, trump_ev,
-        harris_ev, total_ev.
+    Returns dict with keys: trump_pct, harris_pct, trump_ev,
+    harris_ev, total_ev.
     """
     predicted = snapshot[["state", "predicted_winner"]].drop_duplicates(
         subset="state", keep="last"
@@ -283,27 +184,9 @@ def compute_ev_share(snapshot, fec, states=None):
 
 
 def _daily_record(pm, p538, as_of, states, fec_winners):
-    """
-    Compute accuracy for one day for both sources.
+    """Compute accuracy for one day for both sources.
 
-    Parameters
-    ----------
-    pm : DataFrame
-        Polymarket daily data.
-    p538 : DataFrame
-        FiveThirtyEight polling data.
-    as_of : Timestamp
-        Date to evaluate.
-    states : list of str
-        States to include.
-    fec_winners : Series
-        Actual winners indexed by state.
-
-    Returns
-    -------
-    dict or None
-        Record with accuracy stats, or None if
-        data is missing for that day.
+    Returns a dict with accuracy stats, or None if data is missing.
     """
     pm_day = pm[(pm["date"] == as_of) & (pm["state"].isin(states))]
     if pm_day.empty:
@@ -336,29 +219,11 @@ def _daily_record(pm, p538, as_of, states, fec_winners):
 
 
 def compute_daily_accuracy(pm, p538, fec, cutoff, states):
-    """
-    Compute daily accuracy for both sources over
-    the overlap period.
+    """Compute daily accuracy for both sources over the overlap period.
 
-    Parameters
-    ----------
-    pm : DataFrame
-        Polymarket daily data.
-    p538 : DataFrame
-        FiveThirtyEight polling data.
-    fec : DataFrame
-        FEC results data.
-    cutoff : str
-        End date in YYYY-MM-DD format.
-    states : list of str
-        States to include.
-
-    Returns
-    -------
-    DataFrame
-        Daily accuracy records with columns: date,
-        n_states, pm_correct, p538_correct, pm_pct,
-        p538_pct.
+    Iterates from the first date both sources have data through cutoff,
+    building one record per day. Returns a DataFrame with columns:
+    date, n_states, pm_correct, p538_correct, pm_pct, p538_pct.
     """
     start = max(pm["date"].min(), p538["date"].min())
     end = pd.Timestamp(cutoff)
@@ -374,27 +239,10 @@ def compute_daily_accuracy(pm, p538, fec, cutoff, states):
 
 
 def build_head_to_head_metrics(pm, p538, fec, cutoff, groups):
-    """
-    Build per-group accuracy comparison between
-    Polymarket and 538 on a given date.
+    """Build per-group accuracy comparison on a given date.
 
-    Parameters
-    ----------
-    pm : DataFrame
-        Polymarket daily data.
-    p538 : DataFrame
-        FiveThirtyEight polling data.
-    fec : DataFrame
-        FEC results data.
-    cutoff : str
-        Date in YYYY-MM-DD format.
-    groups : list of tuple
-        Each tuple is (label, list_of_states).
-
-    Returns
-    -------
-    DataFrame
-        One row per group with pm_pct and p538_pct.
+    groups is a list of (label, state_list) tuples. Returns a
+    DataFrame with one row per group containing pm_pct and p538_pct.
     """
     fec_winners = fec.set_index("state")["winner"]
     all_states = sorted(set().union(*[s for _, s in groups]))
@@ -417,24 +265,11 @@ def build_head_to_head_metrics(pm, p538, fec, cutoff, groups):
 
 
 def build_polymarket_trajectory_metrics(pm, fec, snapshots, swing_states):
-    """
-    Build Polymarket accuracy at multiple date snapshots.
+    """Build Polymarket accuracy at multiple date snapshots.
 
-    Parameters
-    ----------
-    pm : DataFrame
-        Polymarket daily data.
-    fec : DataFrame
-        FEC results data.
-    snapshots : list of tuple
-        Each tuple is (label, date_str, states_or_none).
-    swing_states : list of str
-        Swing state abbreviations.
-
-    Returns
-    -------
-    DataFrame
-        One row per snapshot with all_pct and swing_pct.
+    snapshots is a list of (label, date_str, states_or_none) tuples.
+    Returns a DataFrame with one row per snapshot containing all_pct
+    and swing_pct.
     """
     fec_winners = fec.set_index("state")["winner"]
 
@@ -462,27 +297,10 @@ def build_polymarket_trajectory_metrics(pm, fec, snapshots, swing_states):
 
 
 def build_ev_comparison_metrics(pm, p538, fec, cutoff, states):
-    """
-    Build Electoral Vote share metrics for Polymarket,
-    538, and actual results.
+    """Build EV share metrics for Polymarket, 538, and actual results.
 
-    Parameters
-    ----------
-    pm : DataFrame
-        Polymarket daily data.
-    p538 : DataFrame
-        FiveThirtyEight polling data.
-    fec : DataFrame
-        FEC results data.
-    cutoff : str
-        Date in YYYY-MM-DD format.
-    states : list of str
-        States to include.
-
-    Returns
-    -------
-    DataFrame
-        One row per source with EV share metrics.
+    Returns a DataFrame with one row per source showing the predicted
+    Trump/Harris electoral vote split on the cutoff date.
     """
     pm_snap = pm_snapshot(pm, cutoff, states)
     p5_snap = p538_snapshot(p538, cutoff, states)
@@ -509,25 +327,8 @@ def build_ev_comparison_metrics(pm, p538, fec, cutoff, states):
 
 
 def _classify_pair(pm_preds, p538_preds, fec_winners, st):
-    """
-    Classify one state as both-right, both-wrong,
-    only-pm-right, or only-538-right.
-
-    Parameters
-    ----------
-    pm_preds : DataFrame
-        Polymarket predictions with predicted_winner.
-    p538_preds : DataFrame
-        538 predictions with predicted_winner.
-    fec_winners : Series
-        Actual winners indexed by state.
-    st : str
-        State abbreviation.
-
-    Returns
-    -------
-    str or None
-        Classification label, or None if data missing.
+    """Classify one state as both-right, both-wrong, only-pm-right,
+    or only-538-right. Returns None if data is missing.
     """
     pm_row = pm_preds[pm_preds["state"] == st]
     p538_row = p538_preds[p538_preds["state"] == st]
@@ -548,25 +349,11 @@ def _classify_pair(pm_preds, p538_preds, fec_winners, st):
 
 
 def mcnemar_test(pm_preds, p538_preds, fec_winners, states):
-    """
-    Run McNemar's exact test on paired state-level
-    winner calls.
+    """Run McNemar's exact test on paired state-level winner calls.
 
-    Parameters
-    ----------
-    pm_preds : DataFrame
-        Polymarket predictions with predicted_winner.
-    p538_preds : DataFrame
-        538 predictions with predicted_winner.
-    fec_winners : Series
-        Actual winners indexed by state.
-    states : list of str
-        States to evaluate.
-
-    Returns
-    -------
-    dict
-        2x2 table counts, n_discordant, and p_value.
+    Compares the discordant pairs (states where only one source was
+    correct) using a binomial test. Returns a dict with 2x2 table
+    counts, n_discordant, and p_value.
     """
     counts = {
         "both_right": 0,
@@ -593,17 +380,7 @@ def mcnemar_test(pm_preds, p538_preds, fec_winners, states):
 
 
 def main():
-    """
-    Run accuracy analysis and print summary metrics.
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    None
-    """
+    """Run accuracy analysis and print summary metrics."""
     pm, p538, fec = load_data(PROCESSED_DIR)
 
     # Head-to-head comparison on overlap cutoff
