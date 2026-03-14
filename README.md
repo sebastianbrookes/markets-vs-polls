@@ -1,7 +1,7 @@
 # Markets vs. Polls
 ## Forecasting the 2024 U.S. Presidential Election
 
-This project compares **Polymarket** prediction-market prices with **FiveThirtyEight** polling averages to evaluate how each source forecast the 2024 U.S. presidential election. We study two questions: which source more accurately predicted certified election outcomes, and which source reacted more usefully to major campaign events. Across the full March 8 to September 12 overlap period, FiveThirtyEight was more accurate on average. But in the late campaign window, Polymarket adapted faster, performed better in the final September 12 head-to-head snapshot, and responded more accurately to the major events analyzed here.
+This project compares **Polymarket** prediction-market prices with **FiveThirtyEight** polling averages to evaluate how each source forecast the 2024 U.S. presidential election. We study two questions: which source more accurately predicted certified election outcomes, and which source reacted more usefully to major campaign events. Across the full March 8 to September 12 overlap period, FiveThirtyEight was more accurate on average. But in the late campaign window, Polymarket appears to have adapted faster, performed better in the final September 12 head-to-head snapshot, and responded more accurately to the major events analyzed here.
 
 ## Main Findings
 
@@ -17,7 +17,7 @@ This project compares **Polymarket** prediction-market prices with **FiveThirtyE
 
 ## Research Questions
 
-1. Which source more accurately predicted actual election outcomes?
+1. Which source aligned more closely with eventual outcomes?
 2. How did prediction markets and polls react to major campaign events, and which source told the more accurate story?
 
 ## Data Sources

@@ -1,3 +1,4 @@
+
 ============================================================
   POLYMARKET vs. 538: PREDICTION ACCURACY ANALYSIS
 ============================================================
@@ -73,6 +74,23 @@ Polymarket standalone — Nov 4 (election eve):
     Mar–May:  PM 63.6%  |  538 99.4%  (85 days)
     Jun–Jul:  PM 87.7%  |  538 97.3%  (61 days)
     Aug–Sep 12:  PM 79.2%  |  538 62.2%  (43 days)
+
+============================================================
+4. McNEMAR'S EXACT TEST (paired accuracy comparison)
+============================================================
+
+  All states (13):
+    Both correct: 8  |  Both wrong: 2
+    Only PM correct: 3  |  Only 538 correct: 0
+    Discordant pairs: 3  →  p = 0.25
+
+  Swing states (7):
+    Both correct: 2  |  Both wrong: 2
+    Only PM correct: 3  |  Only 538 correct: 0
+    Discordant pairs: 3  →  p = 0.25
+
+  Neither difference is statistically significant at α = 0.05.
+  The observed gap is suggestive but cannot rule out chance with n this small.
 
 ============================================================
   Analysis complete.
